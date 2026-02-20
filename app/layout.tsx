@@ -1,6 +1,6 @@
 export const metadata = {
   title: 'Rekonet — 90 Day Plan',
-  description: 'Automated support tool for Individuals, Businesses, and Employability Advisors.',
+  description: 'Automated support tool for Individuals, Businesses, and Employability Advisors.'
 };
 
 export default function RootLayout({ children }) {
