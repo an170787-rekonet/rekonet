@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 
@@ -31,14 +32,14 @@ export default function ResultPage() {
             return;
           }
         }
-        // Fallback demo result
+        // Fallback demo result (so the page works even without the API wired yet)
         setData({
           overall: 3.2,
           overallLevel: 2,
           byCategory: [
-            { competency_key: 'cv', avg_score: 3.0, answered: 2 },
+            { competency_key: 'cv',        avg_score: 3.0, answered: 2 },
             { competency_key: 'interview', avg_score: 2.6, answered: 1 },
-            { competency_key: 'skills', avg_score: 3.8, answered: 1 },
+            { competency_key: 'skills',    avg_score: 3.8, answered: 1 },
             { competency_key: 'jobsearch', avg_score: 3.4, answered: 1 },
           ],
           recommendations: [
@@ -56,14 +57,14 @@ export default function ResultPage() {
   if (loading) return <main style={{ padding: 24 }}>Loading…</main>;
   if (!data) return null;
 
-  const overall = data.overall ?? 0;
+  const overall = Number(data.overall ?? 0);
   const L = levelFromAvg(overall);
 
   return (
     <main style={{ maxWidth: 780, margin: '40px auto', padding: 16 }}>
       <h2>Your current level</h2>
       <p>
-        <strong>{L.label}</strong> ({overall.toFixed ? overall.toFixed(2) : overall} / 5)
+        <strong>{L.label}</strong> ({overall.toFixed(2)} / 5)
       </p>
 
       <h3>By area</h3>
@@ -97,8 +98,10 @@ export default function ResultPage() {
         ))
       )}
 
-      <div style={{ marginTop: 16 }}>
-        <a href="/assessment">Take again</a> · <a href="/assessment/language">Change language</a>
+      <div style={{ marginTop: 16, display: 'flex', gap: 12 }}>
+        <Link href="/assessment">Take again</Link>
+        <span>·</span>
+        <Link href="/assessment/language">Change language</Link>
       </div>
     </main>
   );
