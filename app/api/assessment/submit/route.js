@@ -1,5 +1,5 @@
 // app/api/assessment/submit/route.js
-import { supabase } from "@/lib/supabaseClient";
+import { supabase } from '../../../lib/supabaseClient';
 
 export async function POST(req) {
   try {
