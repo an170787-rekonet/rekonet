@@ -1,126 +1,65 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 
-export default function AssessmentPage() {
-  // TODO: replace with a real auth user id once auth is added
-  const userId = "demo-user-id";
+// Read cookie helper
+function getCookie(name) {
+  if (typeof document === 'undefined') return null;
+  const m = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+  return m ? decodeURIComponent(m.pop()) : null;
+}
 
-  const [profile, setProfile] = useState({ preferred_language: "en" });
-  const [questions, setQuestions] = useState([]);
-  const [optionsByQ, setOptionsByQ] = useState({});
-  const [answers, setAnswers] = useState({});
-  const [loading, setLoading] = useState(true);
+export default function AssessmentStart() {
+  const router = useRouter();
+  const [language, setLanguage] = useState('en');
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState('');
 
   useEffect(() => {
-    (async () => {
-      try {
-        // Get the user's preferred language
-        const p = await fetch("/api/assessment/profile")
-          .then((r) => r.json())
-          .catch(() => null);
-        if (p?.preferred_language) setProfile(p);
-
-        // Get questions + options
-        const q = await fetch("/api/assessment/questions").then((r) => r.json());
-        setQuestions(q.questions || []);
-        setOptionsByQ(q.optionsByQ || {});
-      } finally {
-        setLoading(false);
-      }
-    })();
+    const saved = getCookie('rekonet_read_lang');
+    if (saved) setLanguage(saved);
   }, []);
 
-  function setAnswer(q, value) {
-    setAnswers((prev) => ({ ...prev, [q.id]: { question_id: q.id, ...value } }));
-  }
-
-  async function submit() {
+  const start = async () => {
+    setLoading(true); setErr('');
     try {
-      const res = await fetch("/api/assessment/submit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: userId, answers: Object.values(answers) }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Submission failed");
+      // Try to create an assessment (if API exists). If not, fall back to demo id.
+      let id = 'demo';
+      try {
+        const res = await fetch('/api/assessment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ language })
+        });
+        const json = await res.json();
+        if (res.ok && json?.assessment?.id) id = json.assessment.id;
+      } catch (_) { /* silent fallback */ }
 
-      // Redirect to the correct track’s Week 0
-      const path = data.recommended_path || "standard";
-      window.location.href = `/program/${path}/week-0`;
+      router.push(`/assessment/questions?assessment_id=${id}&language=${language}`);
     } catch (e) {
-      alert(e.message);
+      setErr(String(e.message || e));
+    } finally {
+      setLoading(false);
     }
-  }
-
-  if (loading) return <main style={{ padding: 40 }}>Loading…</main>;
-
-  const lang = profile?.preferred_language || "en";
+  };
 
   return (
-    <main style={{ padding: 40, maxWidth: 760, margin: "0 auto" }}>
-      <h1>Assessment</h1>
-      <p>Answer the questions below. We’ll tailor your 90‑day plan.</p>
+    <main style={{ maxWidth: 680, margin: '40px auto', padding: 16 }}>
+      <h1>Employability Assessment</h1>
+      <p>We’ll show English first and your selected language underneath each question.</p>
 
-      {questions.map((q) => {
-        const opts = optionsByQ[q.id] || [];
-        let translated = null;
-        try {
-          translated = q.translated ? JSON.parse(q.translated)[lang] : null;
-        } catch {
-          // ignore JSON parse errors if translated is empty/not valid JSON yet
-        }
+      <div style={{ marginTop: 16 }}>
+        <button onClick={start} disabled={loading}>
+          {loading ? 'Starting…' : 'Start'}
+        </button>
+      </div>
 
-        return (
-          <section
-            key={q.id}
-            style={{ margin: "24px 0", paddingBottom: 16, borderBottom: "1px solid #eee" }}
-          >
-            <h3 style={{ marginBottom: 8 }}>{q.question_text}</h3>
+      {err && <p style={{ color: 'crimson' }}>{err}</p>}
 
-            {lang !== "en" && translated && (
-              <p style={{ color: "#555", marginTop: 0 }}>{translated}</p>
-            )}
-
-            {q.question_type === "multiple_choice" ? (
-              <ul style={{ listStyle: "none", paddingLeft: 0 }}>
-                {opts.map((o) => (
-                  <li key={o.id} style={{ margin: "8px 0" }}>
-                    <label style={{ cursor: "pointer" }}>
-                      <input
-                        type="radio"
-                        name={`q-${q.id}`}
-                        onChange={() => setAnswer(q, { selected_option_id: o.id })}
-                        style={{ marginRight: 8 }}
-                      />
-                      {o.option_text}
-                    </label>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <textarea
-                rows={3}
-                onChange={(e) => setAnswer(q, { free_text_response: e.target.value })}
-                placeholder="Type your answer here…"
-                style={{ width: "100%", padding: 8, fontSize: 14 }}
-              />
-            )}
-          </section>
-        );
-      })}
-
-      <button
-        onClick={submit}
-        style={{
-          padding: "12px 18px",
-          fontSize: 16,
-          borderRadius: 8,
-          border: "1px solid #ccc",
-        }}
-      >
-        Submit assessment
-      </button>
+      <p style={{ marginTop: 12 }}>
+        Not your language? Go to <a href="/assessment/language">Language</a>.
+      </p>
     </main>
   );
 }
