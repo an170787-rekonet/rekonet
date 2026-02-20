@@ -1,21 +1,16 @@
 {
-  "name": "rekonet-employability",
-  "version": "0.1.0",
+  "name": "rekonet",
   "private": true,
+  "version": "0.1.0",
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 3000",
     "build": "next build",
-    "start": "next start -p $PORT"
+    "start": "next start"
   },
   "dependencies": {
-    "next": "14.1.0",
+    "@supabase/supabase-js": "2.45.0",
+    "next": "14.2.5",
     "react": "18.2.0",
-    "react-dom": "18.2.0",
-    "@supabase/supabase-js": "2.45.4"
-  },
-  "devDependencies": {
-    "typescript": "^5.6.3",
-    "@types/react": "^18.2.66",
-    "@types/node": "^20.11.0"
+    "react-dom": "18.2.0"
   }
 }
