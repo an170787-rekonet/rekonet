@@ -1,9 +1,8 @@
-export default function Home() {
+export default function Program() {
   return (
-    <main style={{ padding: 40 }}>
-      <h1>Rekonet — Automated 90-Day Support Plan</h1>
-      <p>Your platform is now live on Vercel 🎉</p>
-      <p>We will replace this with your real landing page later.</p>
+    <main style={{ padding: 32 }}>
+      <h1>90‑Day Program</h1>
+      <p>Select a track: Individual • Business • Advisor</p>
     </main>
   );
 }
