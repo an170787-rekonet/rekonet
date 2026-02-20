@@ -1,9 +1,3 @@
-export async function GET() {
-  return new Response(
-    JSON.stringify({ ok: true, ts: new Date().toISOString() }),
-    {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    }
-  );
+export function GET() {
+  return new Response('OK');
 }
