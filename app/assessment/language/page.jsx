@@ -16,18 +16,13 @@ export default function LanguagePage() {
   const router = useRouter();
 
   async function select(code) {
-    // Try to set a cookie on the server (if this API exists)
     try {
       await fetch('/api/assessment/language', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ language: code }),
       });
-    } catch {
-      // no-op; we’ll still navigate with the param
-    }
-
-    // Navigate back to Start, passing the language explicitly as a param as well
+    } catch {}
     router.push(`/assessment?language=${encodeURIComponent(code)}`);
   }
 
