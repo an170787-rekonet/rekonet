@@ -75,7 +75,7 @@ export async function GET(request) {
         text_en: 'How confident do you feel listing 3–5 strengths or achievements clearly on your CV?',
         text_local: L(
           'How confident do you feel listing 3–5 strengths or achievements clearly on your CV?',
-          'À quel point vous vous sentez confiant(e) для présenter clairement 3 à 5 points forts ou réalisations sur votre CV ?',
+          'À quel point vous vous sentez confiant(e) pour présenter clairement 3 à 5 points forts ou réalisations sur votre CV ?',
           'Quão confiante você se sente em listar claramente de 3 a 5 pontos fortes ou conquistas no seu CV?',
           '¿Qué tan seguro/a te sientes al enumerar claramente 3–5 fortalezas o logros en tu CV?',
           'உங்கள் CV‑யில் 3–5 பலங்களையோ அல்லது சாதனைகளையோ தெளிவாக எழுதுவதில் நீங்கள் எவ்வளவு நம்பிக்கையுடன் உள்ளீர்கள்?',
@@ -151,7 +151,7 @@ export async function GET(request) {
         text_en: 'How comfortable do you feel joining an online meeting and making sure your sound works?',
         text_local: L(
           'How comfortable do you feel joining an online meeting and making sure your sound works?',
-          'À quel point vous vous sentez à l’aise для rejoindre une réunion en ligne et vérifier que le son fonctionne ?',
+          'À quel point vous vous sentez à l’aise pour rejoindre une réunion en ligne и vérifier que le son fonctionne ?',
           'Quão confortável você se sente ao entrar em uma reunião online e garantir que o áudio funcione?',
           '¿Qué tan cómodo/a te sientes al unirte a una reunión en línea y comprobar que el sonido funcione?',
           'ஆன்லைன் கூட்டத்தில் சேர்ந்து, ஒலி சரியாக வேலை செய்கிறது என்பதைச் சரிபார்ப்பதில் நீங்கள் எவ்வளவு வசதியாக உள்ளீர்கள்?',
@@ -176,7 +176,6 @@ export async function GET(request) {
     ];
     // ---------- END: Localized copy ----------
 
-    // ✅ Always return success for now so your page renders questions
     return NextResponse.json({
       ok: true,
       assessmentId,
