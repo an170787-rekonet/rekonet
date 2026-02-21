@@ -26,7 +26,7 @@ function flightPathFor(category, avg) {
       },
       2: {
         headline: 'Practice one core question',
-        description: 'Record a 60‑second answer to “Tell me about yourself” and listen once.',
+        description: 'Record a 60‑second answer to "Tell me about yourself" and listen once.',
       },
       3: {
         headline: 'Add a clear result',
@@ -52,7 +52,7 @@ function flightPathFor(category, avg) {
       },
       4: {
         headline: 'Show how you apply them',
-        description: 'Add a short “how I use this” line for each strength.',
+        description: 'Add a short "how I use this" line for each strength.',
       },
     },
     jobsearch: {
@@ -74,10 +74,12 @@ function flightPathFor(category, avg) {
       },
     },
   };
+
   const steps = base[category] || {};
   const pick =
     steps[L] ||
-    steps[2] ||
+    steps[2] || // safe mid‑level default
     { headline: 'Next small step', description: 'Choose one simple action you can take this week.' };
+
   return { level: L, ...pick };
 }
