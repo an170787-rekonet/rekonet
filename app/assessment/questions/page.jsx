@@ -38,24 +38,35 @@ const url = `/api/assessment/questions?assessment_id=${encodeURIComponent(assess
 
           // 🔧 Accept BOTH shapes:
           // 1) Old: { items: [...] }
-          // 2) New: { categories: [{ items: [...] }, ...] }
-          let flattened = [];
-          if (Array.isArray(json.items)) {
-            flattened = json.items;
-          } else if (Array.isArray(json.categories)) {
-            flattened = json.categories.flatMap(cat =>
-              (cat.items || []).map(q => ({
-                id: q.id || q.question_id || `${cat.key}-${Math.random().toString(36).slice(2)}`,
-                category: q.category || cat.key || 'general',
-                text_en: q.prompt || q.text_en || '',
-                text_local: q.text_local || q.prompt || q.text_en || ''
-              }))
-            );
-          }
+  let flattened = [];
 
-          setItems(flattened);
-          setI(0);
-        } else {
+  if (Array.isArray(json.items)) {
+    // Shape A: items already flat
+    flattened = json.items;
+  } else if (Array.isArray(json.categories)) {
+    if (json.categories.length > 0 && json.categories[0]?.text_en) {
+      // ✅ Shape B (YOUR CURRENT SHAPE): categories is a flat list of questions
+      flattened = json.categories.map(q => ({
+        id: q.id || q.question_id,
+        category: q.category || 'general',
+        text_en: q.text_en || q.prompt || '',
+        text_local: q.text_local || q.text_en || q.prompt || ''
+      }));
+    } else {
+      // Shape C (fallback): categories are groups with inner .items arrays
+      flattened = json.categories.flatMap(cat =>
+        (cat.items || []).map(q => ({
+          id: q.id || q.question_id || `${cat.key}-${Math.random().toString(36).slice(2)}`,
+          category: q.category || cat.key || 'general',
+          text_en: q.text_en || q.prompt || '',
+          text_local: q.text_local || q.text_en || q.prompt || ''
+        }))
+      );
+    }
+  }
+
+  setItems(flattened);
+  setI(0);        
           setErr(json?.error || 'Could not load questions.');
         }
       } catch (e) {
