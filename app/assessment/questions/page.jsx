@@ -24,14 +24,29 @@ function QuestionsInner() {
     (async () => {
       setLoading(true); setErr('');
       try {
+        // Accept old param names; server is resilient (supports both)
         const url = `/api/assessment/questions?assessment_id=${encodeURIComponent(assessment_id)}&language=${encodeURIComponent(language)}`;
         const res = await fetch(url, { cache: 'no-store' });
         const json = await res.json();
         if (!on) return;
+
         if (json?.ok) {
+          // Server now returns categories; flatten to your existing items shape
+          const cats = Array.isArray(json.categories) ? json.categories : [];
+          const flattened = cats.flatMap(cat =>
+            (cat.items || []).map(q => ({
+              id: q.id || q.question_id || `${cat.key}-${Math.random().toString(36).slice(2)}`,
+              category: cat.key || q.category || 'general',
+              text_en: q.prompt || q.text_en || '',
+              // If you already store localised text per item, map it here.
+              // Otherwise, just mirror English until FR/AR are added.
+              text_local: q.text_local || q.prompt || q.text_en || ''
+            }))
+          );
+
           setIntro(json.intro || '');
-          setScale(json.scale || scale);
-          setItems(json.items || []);
+          setScale(Array.isArray(json.scale) ? json.scale : scale);
+          setItems(flattened);
           setI(0);
         } else {
           setErr(json?.error || 'Could not load questions.');
@@ -62,6 +77,7 @@ function QuestionsInner() {
           question_id: current.id,
           category: current.category,
           score, // 1..5
+          language
         }),
       }).catch(() => null);
     } finally {
