@@ -54,9 +54,6 @@ function QuestionsInner() {
 
           setItems(arr);
           setI(0);
-
-          // (Optional) quick debug while testing:
-          // console.log('Lang on page:', language, 'API lang:', json.language, 'First scale:', json.scale?.[0]);
         } else {
           setErr(json?.error || 'Could not load questions.');
         }
@@ -105,7 +102,6 @@ function QuestionsInner() {
   if (!items.length) return <main style={{ padding: 24 }}>No questions yet.</main>;
 
   if (done) {
-    // In case we render once more while redirecting
     return (
       <main style={{ padding: 24 }}>
         <p>Thanks — finishing up…</p>
