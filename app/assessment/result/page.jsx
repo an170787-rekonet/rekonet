@@ -32,7 +32,7 @@ export default function ResultPage() {
       setLoading(true);
       setErr('');
       try {
-        // IMPORTANT: use a real '&' (not &amp;)
+        // ✅ IMPORTANT: real '&' (NOT &amp;)
         const url = `/api/assessment/result?assessment_id=${encodeURIComponent(assessment_id)}&language=${encodeURIComponent(clientLang)}`;
         const res = await fetch(url, { cache: 'no-store' });
         const json = await res.json();
@@ -42,6 +42,9 @@ export default function ResultPage() {
           setData(json);
           const lang = (json.language || clientLang || 'en').toLowerCase();
           setServerLang(lang);
+
+          // (Optional: for quick debugging while testing)
+          // console.log('clientLang:', clientLang, 'serverLang:', lang);
         } else {
           setErr(json?.error || 'Could not load results.');
         }
@@ -56,8 +59,8 @@ export default function ResultPage() {
   }, [assessment_id, clientLang]);
 
   function restart() {
-    // 🔁 Always forward the language when restarting
-    router.push(`/assessment?language=${encodeURIComponent(serverLang)}`);
+    // ✅ Always forward the language when restarting so it does not reset to English
+    router.push(`/assessment?language=${encodeURIComponent(serverLang || 'en')}`);
   }
 
   if (loading) return <main style={{ padding: 24 }}>Loading…</main>;
@@ -70,7 +73,7 @@ export default function ResultPage() {
   const steps    = Array.isArray(data?.flightPath) ? data.flightPath : [];
 
   return (
-    // RTL for Arabic result screen as well
+    // ✅ RTL for Arabic result screen as well
     <main dir={serverLang === 'ar' ? 'rtl' : 'ltr'} style={{ maxWidth: 780, margin: '40px auto', padding: 16 }}>
       <h2>{headline}</h2>
       <p style={{ color: '#475569' }}>{message}</p>
