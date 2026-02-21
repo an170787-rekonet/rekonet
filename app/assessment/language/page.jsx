@@ -1,71 +1,62 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
 
-const LANGUAGES = [
+const LANGS = [
   { code: 'en', label: 'English' },
-  { code: 'fr', label: 'French' },
-  { code: 'ar', label: 'Arabic' },
-  { code: 'pt', label: 'Portuguese' },
-  { code: 'so', label: 'Somali' },
-  { code: 'ur', label: 'Urdu' },
+  { code: 'fr', label: 'Français' },
+  { code: 'pt', label: 'Português' },
+  { code: 'es', label: 'Español' },
+  { code: 'ta', label: 'தமிழ்' },
+  { code: 'uk', label: 'Українська' },
+  { code: 'ar', label: 'العربية' },
 ];
 
-// Simple cookie setter (front‑end only)
-function setCookie(name, value, days = 365) {
-  const d = new Date();
-  d.setTime(d.getTime() + days * 24 * 60 * 60 * 1000);
-  document.cookie = `${name}=${encodeURIComponent(value)}; expires=${d.toUTCString()}; path=/; samesite=Lax`;
-}
-
-export default function LanguageSelection() {
+export default function LanguagePage() {
   const router = useRouter();
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
 
-  const choose = async (code) => {
+  async function select(code) {
+    // Try to set a cookie on the server (if this API exists)
     try {
-      setSaving(true);
-      setError('');
-      setCookie('rekonet_read_lang', code);
-      setCookie('rekonet_translation_mode', 'bilingual');
-      router.push('/assessment');
-    } catch (e) {
-      setError(String(e.message || e));
-    } finally {
-      setSaving(false);
+      await fetch('/api/assessment/language', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ language: code }),
+      });
+    } catch {
+      // no-op; we’ll still navigate with the param
     }
-  };
+
+    // Navigate back to Start, passing the language explicitly as a param as well
+    router.push(`/assessment?language=${encodeURIComponent(code)}`);
+  }
 
   return (
-    <main style={{ padding: '40px', maxWidth: '500px', margin: '0 auto' }}>
-      <h1>Select Your Preferred Language</h1>
-      <p>This helps us show supportive text under English instructions.</p>
+    <main style={{ maxWidth: 640, margin: '40px auto', padding: 16 }}>
+      <h1 style={{ marginBottom: 8 }}>Select Your Preferred Language</h1>
+      <p style={{ color: '#475569', marginBottom: 16 }}>
+        This helps us show supportive text under English instructions.
+      </p>
 
-      {error && <p style={{ color: 'crimson' }}>{error}</p>}
-
-      <ul style={{ listStyle: 'none', padding: 0 }}>
-        {LANGUAGES.map((lang) => (
-          <li key={lang.code} style={{ margin: '12px 0' }}>
-            <button
-              style={{
-                width: '100%',
-                padding: '12px',
-                fontSize: '16px',
-                borderRadius: '8px',
-                border: '1px solid #ccc',
-                cursor: 'pointer',
-                opacity: saving ? 0.6 : 1,
-              }}
-              disabled={saving}
-              onClick={() => choose(lang.code)}
-            >
-              {lang.label}
-            </button>
-          </li>
+      <div style={{ display: 'grid', gap: 10 }}>
+        {LANGS.map((l) => (
+          <button
+            key={l.code}
+            onClick={() => select(l.code)}
+            style={{
+              padding: '10px 14px',
+              borderRadius: 8,
+              border: '1px solid #e5e7eb',
+              background: '#f8fafc',
+              textAlign: 'left',
+              cursor: 'pointer',
+              fontSize: 16,
+            }}
+          >
+            {l.label}
+          </button>
         ))}
-      </ul>
+      </div>
     </main>
   );
 }
