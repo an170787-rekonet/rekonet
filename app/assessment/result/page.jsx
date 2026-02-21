@@ -1,172 +1,125 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
-import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 
-/** Fallback helper if API is ever unreachable */
-function levelFromAvg(avg) {
-  const a = Number(avg || 0);
-  if (a >= 4.3) return { n: 4, label: 'Job‑Ready' };
-  if (a >= 3.5) return { n: 3, label: 'Ready Soon' };
-  if (a >= 2.5) return { n: 2, label: 'Building' };
-  return { n: 1, label: 'Exploring' };
+// Read a cookie by name (fallback if URL param missing)
+function getCookie(name) {
+  if (typeof document === 'undefined') return null;
+  const m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]+)'));
+  return m ? decodeURIComponent(m[1]) : null;
 }
 
-function ResultPageInner() {
+export default function ResultPage() {
   const sp = useSearchParams();
-  const assessment_id = sp.get('assessment_id') || 'demo';
-  const language = (sp.get('language') || 'en').toLowerCase();
+  const router = useRouter();
 
+  const assessment_id = sp.get('assessment_id') || 'demo';
+
+  // First guess: URL -> cookie -> 'en'
+  const cookieLang = typeof document !== 'undefined' ? getCookie('language') : null;
+  const clientLang = (sp.get('language') || cookieLang || 'en').toLowerCase();
+
+  // After we fetch, we trust the server's language
+  const [serverLang, setServerLang] = useState(clientLang);
   const [data, setData] = useState(null);
+  const [err, setErr] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let on = true;
     (async () => {
       setLoading(true);
+      setErr('');
       try {
-        const res = await fetch(
-          `/api/assessment/result?assessment_id=${encodeURIComponent(assessment_id)}&language=${encodeURIComponent(language)}`,
-          { cache: 'no-store' }
-        );
-        if (res.ok) {
-          const json = await res.json();
-          if (!on) return;
-          if (json?.ok) {
-            setData(json);
-            return;
-          }
+        // IMPORTANT: use a real '&' (not &amp;)
+        const url = `/api/assessment/result?assessment_id=${encodeURIComponent(assessment_id)}&language=${encodeURIComponent(clientLang)}`;
+        const res = await fetch(url, { cache: 'no-store' });
+        const json = await res.json();
+        if (!on) return;
+
+        if (res.ok && json) {
+          setData(json);
+          const lang = (json.language || clientLang || 'en').toLowerCase();
+          setServerLang(lang);
+        } else {
+          setErr(json?.error || 'Could not load results.');
         }
-        // Safe fallback demo data (if API not reachable)
-        if (on) {
-          setData({
-            ok: true,
-            message: {
-              headline: 'Great job — first check‑in complete!',
-              body:
-                'There are no right or wrong answers. We’ve used your responses to suggest a starting point and a short flight‑path you can try next.',
-            },
-            overall: 3.2,
-            startingPoint: { n: 2, label: 'Building' },
-            byCategory: [
-              { competency_key: 'cv',        avg_score: 3.0, answered: 2 },
-              { competency_key: 'interview', avg_score: 2.6, answered: 1 },
-              { competency_key: 'skills',    avg_score: 3.8, answered: 1 },
-              { competency_key: 'jobsearch', avg_score: 3.4, answered: 1 },
-            ],
-            recommendations: [
-              {
-                competency_key: 'interview',
-                level: 2,
-                headline: 'Build your STAR foundations',
-                description: 'Practice one STAR story today and record a 60‑second answer.',
-                resources: [],
-              },
-              {
-                competency_key: 'cv',
-                level: 2,
-                headline: 'Start with a quick CV win',
-                description: 'Use the ATS template and add two quantified bullet points.',
-                resources: [],
-              },
-            ],
-          });
-        }
+      } catch (e) {
+        setErr(String(e?.message || e));
       } finally {
         if (on) setLoading(false);
       }
     })();
-    return () => {
-      on = false;
-    };
-  }, [assessment_id, language]);
+    return () => { on = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assessment_id, clientLang]);
+
+  function restart() {
+    // 🔁 Always forward the language when restarting
+    router.push(`/assessment?language=${encodeURIComponent(serverLang)}`);
+  }
 
   if (loading) return <main style={{ padding: 24 }}>Loading…</main>;
-  if (!data) return null;
+  if (err) return <main style={{ padding: 24, color: 'crimson' }}>{err}</main>;
+  if (!data) return <main style={{ padding: 24 }}>No results yet.</main>;
 
-  const overall = Number(data.overall ?? 0);
-  // Prefer API’s supportive “startingPoint”; fall back to derived
-  const startingPoint = data.startingPoint || levelFromAvg(overall);
+  const headline = data?.summary?.headline || 'Your starting point';
+  const message  = data?.summary?.message  || 'Based on your answers, here’s a supportive first step to help you move forward.';
+  const overall  = data?.levels?.overall;
+  const steps    = Array.isArray(data?.flightPath) ? data.flightPath : [];
 
   return (
-    <main style={{ maxWidth: 780, margin: '40px auto', padding: 16 }}>
-      {/* Supportive headline and body from API */}
-      {data.message ? (
+    // RTL for Arabic result screen as well
+    <main dir={serverLang === 'ar' ? 'rtl' : 'ltr'} style={{ maxWidth: 780, margin: '40px auto', padding: 16 }}>
+      <h2>{headline}</h2>
+      <p style={{ color: '#475569' }}>{message}</p>
+
+      {overall && (
+        <div style={{ marginTop: 16, padding: 12, border: '1px solid #e5e7eb', borderRadius: 8 }}>
+          <strong>Level:</strong> {overall.tier} ({overall.code})
+        </div>
+      )}
+
+      {steps.length > 0 && (
         <>
-          <h2>{data.message.headline}</h2>
-          <p>{data.message.body}</p>
-        </>
-      ) : (
-        <>
-          <h2>Great job — first check‑in complete!</h2>
-          <p>
-            There are no right or wrong answers here. We’ve suggested a starting point and a short
-            flight‑path to try next.
-          </p>
+          <h3 style={{ marginTop: 16 }}>Your next steps</h3>
+          <ul>
+            {steps.map((f, idx) => (
+              <li key={idx} style={{ margin: '8px 0' }}>
+                <strong>{f.title}</strong><br />
+                {f.why && <span style={{ color: '#64748b' }}>{f.why}</span>}<br />
+                {f.next && <em>{f.next}</em>}
+              </li>
+            ))}
+          </ul>
         </>
       )}
 
-      {/* Show starting point instead of “skill level” */}
-      <p style={{ marginTop: 8 }}>
-        <strong>Starting point: {startingPoint.label}</strong> ({overall.toFixed(2)} / 5)
-      </p>
+      <div style={{ marginTop: 20, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+        {/* Continue link if API provided */}
+        {Array.isArray(data?.links) && data.links.map((l) => (
+          <a key={l.href} href={l.href} style={{ padding: '8px 12px', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+            {l.label}
+          </a>
+        ))}
 
-      {/* By area */}
-      <h3 style={{ marginTop: 20 }}>By area</h3>
-      <ul>
-        {(data.byCategory || []).map((r) => {
-          const l = levelFromAvg(r.avg_score);
-          return (
-            <li key={r.competency_key}>
-              <strong>{r.competency_key}</strong>: {l.label} ({Number(r.avg_score).toFixed(2)})
-            </li>
-          );
-        })}
-      </ul>
+        {/* 🔁 Start again: forward language so the next run stays localized */}
+        <button
+          onClick={restart}
+          style={{ padding: '8px 12px', border: '1px solid #e5e7eb', borderRadius: 8, background: '#fff', cursor: 'pointer' }}
+        >
+          Start again
+        </button>
 
-      {/* First flight‑path */}
-      <h3 style={{ marginTop: 20 }}>First flight‑path</h3>
-      {(data.recommendations || []).length === 0 ? (
-        <p>We’ll add tailored steps here shortly.</p>
-      ) : (
-        (data.recommendations || []).map((rec) => (
-          <section key={rec.competency_key} style={{ marginBottom: 16 }}>
-            <h4>
-              {rec.competency_key} — {['', 'Exploring', 'Building', 'Ready Soon', 'Job‑Ready'][rec.level]}
-            </h4>
-            <p>
-              <strong>{rec.headline}</strong>: {rec.description}
-            </p>
-            {rec.resources?.length ? (
-              <ul>
-                {rec.resources.map((r) => (
-                  <li key={r.id}>
-                    <a href={r.url} target="_blank" rel="noreferrer">
-                      {r.title}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-          </section>
-        ))
-      )}
-
-      {/* Footer links fixed */}
-      <div style={{ marginTop: 16, display: 'flex', gap: 12 }}>
-        <Link href="/assessment">Take again</Link>
-        <span>·</span>
-        <Link href="/assessment/language">Change language</Link>
+        {/* Optional: direct language change */}
+        <a
+          href="/assessment/language"
+          style={{ padding: '8px 12px', border: '1px solid #e5e7eb', borderRadius: 8 }}
+        >
+          Change language
+        </a>
       </div>
     </main>
-  );
-}
-
-export default function ResultPage() {
-  return (
-    <Suspense fallback={<main style={{ padding: 24 }}>Loading…</main>}>
-      <ResultPageInner />
-    </Suspense>
   );
 }
