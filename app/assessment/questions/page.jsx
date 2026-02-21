@@ -3,17 +3,27 @@
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
+// Helper: read a cookie by name
+function getCookie(name) {
+  if (typeof document === 'undefined') return null;
+  const m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]+)'));
+  return m ? decodeURIComponent(m[1]) : null;
+}
+
 function QuestionsInner() {
   const sp = useSearchParams();
   const router = useRouter();
 
   const assessment_id = sp.get('assessment_id') || 'demo';
-  const language = (sp.get('language') || 'en').toLowerCase();
+
+  // ✅ Language from URL, or cookie fallback, or 'en'
+  const cookieLang = typeof document !== 'undefined' ? getCookie('language') : null;
+  const language = (sp.get('language') || cookieLang || 'en').toLowerCase();
 
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState('');
   const [intro, setIntro] = useState('');
-  const [scale, setScale] = useState(['Not yet','Rarely','Sometimes','Often','Always']);
+  const [scale, setScale] = useState(['Not yet', 'A little', 'Sometimes', 'Often', 'Always']);
   const [items, setItems] = useState([]); // [{id, category, text_en, text_local}]
   const [i, setI] = useState(0);          // current index
   const [saving, setSaving] = useState(false);
@@ -22,7 +32,8 @@ function QuestionsInner() {
   useEffect(() => {
     let on = true;
     (async () => {
-      setLoading(true); setErr('');
+      setLoading(true);
+      setErr('');
       try {
         // IMPORTANT: plain '&' between query params
         const url = `/api/assessment/questions?assessment_id=${encodeURIComponent(assessment_id)}&language=${encodeURIComponent(language)}`;
@@ -34,9 +45,7 @@ function QuestionsInner() {
           setIntro(json.intro || '');
           setScale(Array.isArray(json.scale) ? json.scale : scale);
 
-          // ✅ SIMPLE CONTRACT:
-          // If the API provides 'items', use it.
-          // If it provides a flat list under 'categories', use that.
+          // Accept either { items } flat or { categories } flat
           const arr = Array.isArray(json.items)
             ? json.items
             : Array.isArray(json.categories)
@@ -45,6 +54,9 @@ function QuestionsInner() {
 
           setItems(arr);
           setI(0);
+
+          // (Optional) quick debug while testing:
+          // console.log('Lang on page:', language, 'API lang:', json.language, 'First scale:', json.scale?.[0]);
         } else {
           setErr(json?.error || 'Could not load questions.');
         }
@@ -102,7 +114,8 @@ function QuestionsInner() {
   }
 
   return (
-    <main style={{ maxWidth: 780, margin: '40px auto', padding: 16 }}>
+    // ✅ RTL for Arabic only
+    <main dir={language === 'ar' ? 'rtl' : 'ltr'} style={{ maxWidth: 780, margin: '40px auto', padding: 16 }}>
       <h2>Assessment Questions</h2>
       <p style={{ color: '#444', marginBottom: 16 }}>{intro}</p>
 
