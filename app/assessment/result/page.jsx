@@ -1,7 +1,7 @@
 'use client';
 
+import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 
 function levelFromAvg(avg) {
@@ -12,7 +12,7 @@ function levelFromAvg(avg) {
   return { n: 1, label: 'Exploring' };
 }
 
-export default function ResultPage() {
+function ResultPageInner() {
   const sp = useSearchParams();
   const assessment_id = sp.get('assessment_id') || 'demo';
   const language = sp.get('language') || 'en';
@@ -104,5 +104,13 @@ export default function ResultPage() {
         <Link href="/assessment/language">Change language</Link>
       </div>
     </main>
+  );
+}
+
+export default function ResultPage() {
+  return (
+    <Suspense fallback={<main style={{ padding: 24 }}>Loading…</main>}>
+      <ResultPageInner />
+    </Suspense>
   );
 }
