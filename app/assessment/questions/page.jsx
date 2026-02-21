@@ -16,10 +16,11 @@ function QuestionsInner() {
 
   const assessment_id = sp.get('assessment_id') || 'demo';
 
-  // ✅ Language from URL, or cookie fallback, or 'en'
+  // Initial language guess: URL -> cookie -> 'en'
   const cookieLang = typeof document !== 'undefined' ? getCookie('language') : null;
-  const language = (sp.get('language') || cookieLang || 'en').toLowerCase();
+  const [clientLang] = useState((sp.get('language') || cookieLang || 'en').toLowerCase());
 
+  const [serverLang, setServerLang] = useState(clientLang); // authoritative after fetch
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState('');
   const [intro, setIntro] = useState('');
@@ -28,20 +29,24 @@ function QuestionsInner() {
   const [i, setI] = useState(0);          // current index
   const [saving, setSaving] = useState(false);
 
-  // Load questions
+  // Load questions (use clientLang for the request; respect server response)
   useEffect(() => {
     let on = true;
     (async () => {
       setLoading(true);
       setErr('');
       try {
-        // IMPORTANT: plain '&' between query params
-        const url = `/api/assessment/questions?assessment_id=${encodeURIComponent(assessment_id)}&language=${encodeURIComponent(language)}`;
+        // IMPORTANT: real '&' (not &amp;)
+        const url = `/api/assessment/questions?assessment_id=${encodeURIComponent(assessment_id)}&language=${encodeURIComponent(clientLang)}`;
         const res = await fetch(url, { cache: 'no-store' });
         const json = await res.json();
         if (!on) return;
 
         if (json?.ok) {
+          // 👇 server is authoritative for language after fetch
+          const langFromServer = (json.language || clientLang || 'en').toLowerCase();
+          setServerLang(langFromServer);
+
           setIntro(json.intro || '');
           setScale(Array.isArray(json.scale) ? json.scale : scale);
 
@@ -54,6 +59,9 @@ function QuestionsInner() {
 
           setItems(arr);
           setI(0);
+
+          // (Optional) quick visibility while testing:
+          // console.log('clientLang:', clientLang, 'serverLang:', langFromServer, 'scale[0]:', json.scale?.[0]);
         } else {
           setErr(json?.error || 'Could not load questions.');
         }
@@ -65,7 +73,7 @@ function QuestionsInner() {
     })();
     return () => { on = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [assessment_id, language]);
+  }, [assessment_id, clientLang]);
 
   const current = useMemo(() => items[i] || null, [items, i]);
   const done = i >= items.length;
@@ -83,7 +91,7 @@ function QuestionsInner() {
           question_id: current.id,
           category: current.category,
           score, // 1..5
-          language
+          language: serverLang // send what we actually displayed
         }),
       }).catch(() => null);
     } finally {
@@ -92,7 +100,9 @@ function QuestionsInner() {
       if (i + 1 < items.length) {
         setI(i + 1);
       } else {
-        router.push(`/assessment/result?assessment_id=${encodeURIComponent(assessment_id)}&language=${encodeURIComponent(language)}`);
+        router.push(
+          `/assessment/result?assessment_id=${encodeURIComponent(assessment_id)}&language=${encodeURIComponent(serverLang)}`
+        );
       }
     }
   };
@@ -102,6 +112,7 @@ function QuestionsInner() {
   if (!items.length) return <main style={{ padding: 24 }}>No questions yet.</main>;
 
   if (done) {
+    // In case we render once more while redirecting
     return (
       <main style={{ padding: 24 }}>
         <p>Thanks — finishing up…</p>
@@ -110,8 +121,8 @@ function QuestionsInner() {
   }
 
   return (
-    // ✅ RTL for Arabic only
-    <main dir={language === 'ar' ? 'rtl' : 'ltr'} style={{ maxWidth: 780, margin: '40px auto', padding: 16 }}>
+    // RTL only when SERVER said Arabic
+    <main dir={serverLang === 'ar' ? 'rtl' : 'ltr'} style={{ maxWidth: 780, margin: '40px auto', padding: 16 }}>
       <h2>Assessment Questions</h2>
       <p style={{ color: '#444', marginBottom: 16 }}>{intro}</p>
 
@@ -121,12 +132,12 @@ function QuestionsInner() {
 
       <section style={{ marginTop: 20, marginBottom: 20 }}>
         <p style={{ fontSize: 18, marginBottom: 8 }}>{current.text_en}</p>
-        {language !== 'en' && (
+        {serverLang !== 'en' && (
           <p style={{ fontSize: 16, color: '#444', marginTop: 0 }}>{current.text_local}</p>
         )}
       </section>
 
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex, gap: 8, flexWrap: 'wrap' }}>
         {scale.map((label, idx) => {
           const score = idx + 1; // 1..5
           return (
