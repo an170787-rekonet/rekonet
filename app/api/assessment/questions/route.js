@@ -1,18 +1,25 @@
 export const runtime = 'nodejs';
 
 import { NextResponse } from 'next/server';
-import { getAssessment } from '../../_lib/store';
+import { supabaseAdmin } from '../../_lib/supabase';
 import { getCategories, getScale, getIntro, getQuestions } from '../../_lib/questions';
 
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
     const assessment_id = searchParams.get('assessment_id') || 'demo';
-    const language = (searchParams.get('language') || 'en').toLowerCase();
+    const languageParam = (searchParams.get('language') || 'en').toLowerCase();
 
-    // Prefer the language stored on the assessment if present
-    const a = getAssessment(assessment_id);
-    const lang = a?.language || language || 'en';
+    let lang = languageParam;
+
+    if (assessment_id !== 'demo') {
+      const { data, error } = await supabaseAdmin
+        .from('assessments')
+        .select('language')
+        .eq('id', assessment_id)
+        .single();
+      if (!error && data?.language) lang = data.language;
+    }
 
     return NextResponse.json({
       ok: true,
@@ -24,9 +31,6 @@ export async function GET(request) {
       items: getQuestions(lang),
     });
   } catch (e) {
-    return NextResponse.json(
-      { ok: false, error: String(e?.message || e) },
-      { status: 500 }
-    );
+    return NextResponse.json({ ok: false, error: String(e?.message || e) }, { status: 500 });
   }
 }
