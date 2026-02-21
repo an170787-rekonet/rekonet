@@ -2,30 +2,39 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
+// Read a cookie by name
 function getCookie(name) {
   if (typeof document === 'undefined') return null;
-  const m = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
-  return m ? decodeURIComponent(m.pop()) : null;
+  const m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]+)'));
+  return m ? decodeURIComponent(m[1]) : null;
 }
 
 export default function AssessmentStart() {
   const router = useRouter();
+  const sp = useSearchParams();
+
   const [language, setLanguage] = useState('en');
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
 
+  // ✅ Language source of truth: URL → cookie('language') → cookie(legacy) → 'en'
   useEffect(() => {
-    const saved = getCookie('rekonet_read_lang');
-    if (saved) setLanguage(saved);
-  }, []);
+    const fromUrl = sp.get('language');
+    const fromCookieNew = getCookie('language');            // set by /api/assessment/language
+    const fromCookieLegacy = getCookie('rekonet_read_lang'); // your older cookie name
+    const chosen = (fromUrl || fromCookieNew || fromCookieLegacy || 'en').toLowerCase();
+    setLanguage(chosen);
+  }, [sp]);
 
   const start = async () => {
-    setLoading(true); setErr('');
+    setLoading(true);
+    setErr('');
     try {
-      // Try to create an assessment via API (if present). Fall back to demo id.
       let id = 'demo';
+
+      // Try to create an assessment (works with both old/new response shapes)
       try {
         const res = await fetch('/api/assessment', {
           method: 'POST',
@@ -33,12 +42,22 @@ export default function AssessmentStart() {
           body: JSON.stringify({ language }),
         });
         const json = await res.json().catch(() => ({}));
-        if (res.ok && json?.assessment?.id) id = json.assessment.id;
-      } catch (_) { /* ignore for demo */ }
 
-      router.push(`/assessment/questions?assessment_id=${id}&language=${language}`);
+        // New shape we used: { assessmentId, language }
+        // Old shape you had: { assessment: { id } }
+        if (res.ok && (json?.assessmentId || json?.assessment?.id)) {
+          id = json.assessmentId || json.assessment.id;
+        }
+      } catch {
+        // swallow; fall back to 'demo'
+      }
+
+      // ✅ IMPORTANT: real '&language=' (not &amp;)
+      router.push(
+        `/assessment/questions?assessment_id=${encodeURIComponent(id)}&language=${encodeURIComponent(language)}`
+      );
     } catch (e) {
-      setErr(String(e.message || e));
+      setErr(String(e?.message || e));
     } finally {
       setLoading(false);
     }
