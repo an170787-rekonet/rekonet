@@ -1,17 +1,83 @@
-function completionMessage(language = 'en') {
-  const M = {
-    en: {
-      headline: 'Well done — you’ve completed your first check‑in!',
-      body: 'You’ve taken a positive first step today. These questions don’t have right or wrong answers — they simply help us understand where you are right now. Your responses give a clear starting point and a short flight‑path to help you move forward with confidence.',
+function flightPathFor(category, avg) {
+  const L = levelFromAvg(avg).n;
+  const base = {
+    cv: {
+      1: {
+        headline: 'Start with one quick CV win',
+        description: 'Use a clean template and add two short bullet points that show your impact.',
+      },
+      2: {
+        headline: 'Tailor your CV in 15 minutes',
+        description: 'Pick one job ad and match your top 3 bullets to its keywords.',
+      },
+      3: {
+        headline: 'Proof and polish',
+        description: 'Run a spell/grammar check and ask one person for a small suggestion.',
+      },
+      4: {
+        headline: 'Show impact upfront',
+        description: 'Move your strongest results to the top section of page one.',
+      },
     },
-    fr: {
-      headline: 'Bravo — vous avez terminé votre premier point d’étape !',
-      body: 'Vous avez fait un premier pas positif aujourd’hui. Il n’y a pas de bonnes ou mauvaises réponses — ces questions nous aident simplement à comprendre où vous en êtes. Vos réponses nous donnent un point de départ clair et une courte trajectoire pour avancer en confiance.',
+    interview: {
+      1: {
+        headline: 'Build your first example',
+        description: 'Write a short story about a time you solved a problem.',
+      },
+      2: {
+        headline: 'Practice one core question',
+        description: 'Record a 60‑second answer to “Tell me about yourself” and listen once.',
+      },
+      3: {
+        headline: 'Add a clear result',
+        description: 'End your story with one result and one thing you learned.',
+      },
+      4: {
+        headline: 'Rotate your stories',
+        description: 'Keep three short stories and swap which one you lead with.',
+      },
     },
-    ar: {
-      headline: 'أحسنت — لقد أكملت أول فحص لك!',
-      body: 'لقد خطوت خطوة إيجابية اليوم. لا توجد إجابات صحيحة أو خاطئة — فهذه الأسئلة تساعدنا فقط على فهم مكانك الآن. إجاباتك تعطينا نقطة بداية واضحة ومسار دعم قصير لمساعدتك على التقدّم بثقة.',
+    skills: {
+      1: {
+        headline: 'Name your top strengths',
+        description: 'Write 2–3 strengths and one example for each.',
+      },
+      2: {
+        headline: 'Collect quick examples',
+        description: 'Add one sentence that shows your part in the result.',
+      },
+      3: {
+        headline: 'Match to job keywords',
+        description: 'Link your strengths to a real job ad you like.',
+      },
+      4: {
+        headline: 'Show how you apply them',
+        description: 'Add a short “how I use this” line for each strength.',
+      },
+    },
+    jobsearch: {
+      1: {
+        headline: 'Pick two places to look',
+        description: 'Choose two job boards or groups and bookmark them.',
+      },
+      2: {
+        headline: 'Light weekly check',
+        description: 'Spend 10–15 minutes once a week to scan and save roles.',
+      },
+      3: {
+        headline: 'Simple tracking',
+        description: 'Note job title, link, and one reason it fits you.',
+      },
+      4: {
+        headline: 'Personal touch',
+        description: 'Send one short message to someone who works in a team you like.',
+      },
     },
   };
-  return M[language] || M.en;
+  const steps = base[category] || {};
+  const pick =
+    steps[L] ||
+    steps[2] ||
+    { headline: 'Next small step', description: 'Choose one simple action you can take this week.' };
+  return { level: L, ...pick };
 }
