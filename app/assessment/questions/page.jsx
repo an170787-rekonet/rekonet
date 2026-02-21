@@ -25,7 +25,7 @@ function QuestionsInner() {
       setLoading(true); setErr('');
       try {
         // Use your existing param names
-        const url = `/api/assessment/questions?assessment_id=${encodeURIComponent(assessment_id)}&amp;language=${encodeURIComponent(language)}`;
+const url = `/api/assessment/questions?assessment_id=${encodeURIComponent(assessment_id)}&language=${encodeURIComponent(language)}`;
         const res = await fetch(url, { cache: 'no-store' });
         const json = await res.json();
         if (!on) return;
