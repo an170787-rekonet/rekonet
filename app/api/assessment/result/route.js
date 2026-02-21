@@ -1,7 +1,9 @@
 export const runtime = 'nodejs';
 
 import { NextResponse } from 'next/server';
-import { getAnswers } from '../../_lib/store';
+import { supabaseAdmin } from '../../_lib/supabase';
+
+const ALL_CATS = ['cv', 'interview', 'skills', 'jobsearch'];
 
 function levelFromAvg(avg) {
   const a = Number(avg || 0);
@@ -29,8 +31,7 @@ function completionMessage(language = 'en') {
   return M[language] || M.en;
 }
 
-function flightPathFor(category, avg) {
-  const L = levelFromAvg(avg).n;
+function flightPathFor(category, L) {
   const base = {
     cv: {
       1: { headline: 'Start with one quick CV win', description: 'Use a clean template and add two quantified bullet points in your latest role.' },
@@ -68,48 +69,74 @@ export async function GET(request) {
     const assessment_id = searchParams.get('assessment_id') || 'demo';
     const language = (searchParams.get('language') || 'en').toLowerCase();
 
-    const rows = getAnswers(assessment_id);
-
-    // Aggregate by category
-    const byCatMap = new Map();
-    for (const r of rows) {
-      const entry = byCatMap.get(r.category) || { sum: 0, count: 0 };
-      entry.sum += Number(r.score || 0);
-      entry.count += 1;
-      byCatMap.set(r.category, entry);
+    if (assessment_id === 'demo') {
+      const byCategory = ALL_CATS.map((key) => ({ competency_key: key, avg_score: 0, answered: 0 }));
+      const overall = 0;
+      const recommendations = byCategory.map((c) => {
+        const L = levelFromAvg(c.avg_score).n;
+        const fp = flightPathFor(c.competency_key, L);
+        return { competency_key: c.competency_key, level: fp.level, headline: fp.headline, description: fp.description, resources: [] };
+      });
+      return NextResponse.json({
+        ok: true,
+        assessment_id,
+        language,
+        message: completionMessage(language),
+        startingPoint: levelFromAvg(overall),
+        overall,
+        byCategory,
+        recommendations,
+      });
     }
 
-    const allCats = ['cv', 'interview', 'skills', 'jobsearch'];
-    const byCategory = allCats.map(key => {
-      const e = byCatMap.get(key) || { sum: 0, count: 0 };
+    // Get assessment + language
+    const { data: a, error: eA } = await supabaseAdmin
+      .from('assessments')
+      .select('id, language')
+      .eq('id', assessment_id)
+      .single();
+    if (eA || !a) return NextResponse.json({ ok: false, error: 'Unknown assessment_id' }, { status: 404 });
+    const lang = (a.language || language || 'en').toLowerCase();
+
+    // Fetch answers
+    const { data: rows, error } = await supabaseAdmin
+      .from('answers')
+      .select('category, score')
+      .eq('assessment_id', assessment_id);
+
+    if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+
+    // Aggregate
+    const map = new Map();
+    for (const r of rows || []) {
+      const e = map.get(r.category) || { sum: 0, count: 0 };
+      e.sum += Number(r.score || 0);
+      e.count += 1;
+      map.set(r.category, e);
+    }
+
+    const byCategory = ALL_CATS.map((key) => {
+      const e = map.get(key) || { sum: 0, count: 0 };
       const avg = e.count ? e.sum / e.count : 0;
       return { competency_key: key, avg_score: avg, answered: e.count };
     });
 
     const overall =
-      byCategory.reduce((acc, c) => acc + (Number(c.avg_score) || 0), 0) /
-      (byCategory.length || 1);
+      byCategory.reduce((acc, c) => acc + (Number(c.avg_score) || 0), 0) / (byCategory.length || 1);
 
-    const recommendations = byCategory.map(c => {
-      const fp = flightPathFor(c.competency_key, c.avg_score);
-      return {
-        competency_key: c.competency_key,
-        level: fp.level,
-        headline: fp.headline,
-        description: fp.description,
-        resources: [],
-      };
+    const recommendations = byCategory.map((c) => {
+      const L = levelFromAvg(c.avg_score).n;
+      const fp = flightPathFor(c.competency_key, L);
+      return { competency_key: c.competency_key, level: fp.level, headline: fp.headline, description: fp.description, resources: [] };
     });
-
-    const startingPoint = levelFromAvg(overall);
 
     return NextResponse.json({
       ok: true,
       assessment_id,
-      language,
-      message: completionMessage(language),
-      startingPoint,   // { n, label }
-      overall,         // 0..5
+      language: lang,
+      message: completionMessage(lang),
+      startingPoint: levelFromAvg(overall),
+      overall,
       byCategory,
       recommendations,
     });
