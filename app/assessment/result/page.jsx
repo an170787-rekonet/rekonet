@@ -32,7 +32,7 @@ export default function ResultPage() {
             return;
           }
         }
-        // Fallback demo result (so the page works even without the API wired yet)
+        // Fallback demo result (works even without API)
         setData({
           overall: 3.2,
           overallLevel: 2,
