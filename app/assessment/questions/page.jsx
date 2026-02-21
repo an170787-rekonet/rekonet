@@ -24,49 +24,28 @@ function QuestionsInner() {
     (async () => {
       setLoading(true); setErr('');
       try {
-        // Use your existing param names
-const url = `/api/assessment/questions?assessment_id=${encodeURIComponent(assessment_id)}&language=${encodeURIComponent(language)}`;
+        // IMPORTANT: plain '&' between query params
+        const url = `/api/assessment/questions?assessment_id=${encodeURIComponent(assessment_id)}&language=${encodeURIComponent(language)}`;
         const res = await fetch(url, { cache: 'no-store' });
         const json = await res.json();
         if (!on) return;
 
         if (json?.ok) {
           setIntro(json.intro || '');
-
-          // Use server scale if provided, otherwise keep current
           setScale(Array.isArray(json.scale) ? json.scale : scale);
 
-          // 🔧 Accept BOTH shapes:
-          // 1) Old: { items: [...] }
-  let flattened = [];
+          // ✅ SIMPLE CONTRACT:
+          // If the API provides 'items', use it.
+          // If it provides a flat list under 'categories', use that.
+          const arr = Array.isArray(json.items)
+            ? json.items
+            : Array.isArray(json.categories)
+              ? json.categories
+              : [];
 
-  if (Array.isArray(json.items)) {
-    // Shape A: items already flat
-    flattened = json.items;
-  } else if (Array.isArray(json.categories)) {
-    if (json.categories.length > 0 && json.categories[0]?.text_en) {
-      // ✅ Shape B (YOUR CURRENT SHAPE): categories is a flat list of questions
-      flattened = json.categories.map(q => ({
-        id: q.id || q.question_id,
-        category: q.category || 'general',
-        text_en: q.text_en || q.prompt || '',
-        text_local: q.text_local || q.text_en || q.prompt || ''
-      }));
-    } else {
-      // Shape C (fallback): categories are groups with inner .items arrays
-      flattened = json.categories.flatMap(cat =>
-        (cat.items || []).map(q => ({
-          id: q.id || q.question_id || `${cat.key}-${Math.random().toString(36).slice(2)}`,
-          category: q.category || cat.key || 'general',
-          text_en: q.text_en || q.prompt || '',
-          text_local: q.text_local || q.text_en || q.prompt || ''
-        }))
-      );
-    }
-  }
-
-  setItems(flattened);
-  setI(0);        
+          setItems(arr);
+          setI(0);
+        } else {
           setErr(json?.error || 'Could not load questions.');
         }
       } catch (e) {
