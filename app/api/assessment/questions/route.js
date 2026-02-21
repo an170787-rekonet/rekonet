@@ -1,32 +1,32 @@
-// app/api/assessment/questions/route.js
-import { supabase } from '../../../../lib/supabaseClient';
+export const runtime = 'nodejs';
 
-export async function GET() {
+import { NextResponse } from 'next/server';
+import { getAssessment } from '../../_lib/store';
+import { getCategories, getScale, getIntro, getQuestions } from '../../_lib/questions';
+
+export async function GET(request) {
   try {
-    const { data: questions, error: qerr } = await supabase
-      .from("assessment_questions")
-      .select("*")
-      .order("created_at", { ascending: true });
-    if (qerr) throw qerr;
+    const { searchParams } = new URL(request.url);
+    const assessment_id = searchParams.get('assessment_id') || 'demo';
+    const language = (searchParams.get('language') || 'en').toLowerCase();
 
-    const ids = (questions || []).map(q => q.id);
-    let optionsByQ = {};
-    if (ids.length) {
-      const { data: options, error: oerr } = await supabase
-        .from("assessment_options")
-        .select("*")
-        .in("question_id", ids)
-        .order("created_at", { ascending: true });
-      if (oerr) throw oerr;
+    // Prefer the language stored on the assessment if present
+    const a = getAssessment(assessment_id);
+    const lang = a?.language || language || 'en';
 
-      optionsByQ = (options || []).reduce((acc, o) => {
-        (acc[o.question_id] ||= []).push(o);
-        return acc;
-      }, {});
-    }
-
-    return new Response(JSON.stringify({ questions, optionsByQ }), { status: 200 });
-  } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+    return NextResponse.json({
+      ok: true,
+      assessment_id,
+      language: lang,
+      intro: getIntro(lang),
+      scale: getScale(lang),
+      categories: getCategories(lang),
+      items: getQuestions(lang),
+    });
+  } catch (e) {
+    return NextResponse.json(
+      { ok: false, error: String(e?.message || e) },
+      { status: 500 }
+    );
   }
 }
