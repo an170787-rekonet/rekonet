@@ -2,7 +2,7 @@
 
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useState, useMemo } from 'react';
-import { supabase } from '../../../../lib/supabaseClient';
+import { supabase } from '../../../lib/supabaseClient';
 
 export default function CvAtsActivityPage() {
   const sp = useSearchParams();
@@ -24,7 +24,7 @@ export default function CvAtsActivityPage() {
 
   const canSave =
     userId &&
-    /^[0-9a-f-]{32,}$/i.test(userId); // simple UUID check
+    /^[0-9a-f-]{32,}$/i.test(userId); // simple UUID-ish check
 
   async function handleMarkDone() {
     if (!canSave) {
@@ -38,7 +38,7 @@ export default function CvAtsActivityPage() {
       .insert([{ user_id: userId, activity_id: 'cv-ats-1' }]);
 
     if (error) {
-      setStatus({ kind: 'error', msg: error.message });
+      setStatus({ kind: 'error', msg: error.message || 'Could not save.' });
       return;
     }
 
@@ -46,22 +46,28 @@ export default function CvAtsActivityPage() {
     router.push(returnUrl);
   }
 
+  const isRTL = language === 'ar';
+
   return (
-    <main style={{ maxWidth: 640, margin: '40px auto', padding: 16 }}>
-      <h2>ATS CV tune (10 min)</h2>
-      <p>Align your top 5 bullets to a target role. When done, mark this activity complete.</p>
+    <main dir={isRTL ? 'rtl' : 'ltr'} style={{ maxWidth: 640, margin: '40px auto', padding: 16 }}>
+      <h2 style={{ marginTop: 0 }}>ATS CV tune (10 min)</h2>
+      <p style={{ color: '#444' }}>
+        Align your top 5 bullets to a target role. When done, mark this activity complete.
+      </p>
 
       {!userIdFromUrl && (
         <div style={{ margin: '12px 0', padding: 12, border: '1px solid #eee', borderRadius: 8 }}>
-          <label>Your <code>user_id</code> (UUID):</label>
+          <label style={{ display: 'block', fontSize: 13, color: '#555', marginBottom: 6 }}>
+            Your <code>user_id</code> (UUID):
+          </label>
           <input
             value={userId}
             onChange={(e) => setUserId(e.target.value.trim())}
             placeholder="paste your user_id"
-            style={{ width: '100%', padding: 8, marginTop: 6 }}
+            style={{ width: '100%', padding: 8, border: '1px solid #ddd', borderRadius: 6 }}
           />
           <div style={{ fontSize: 12, color: '#666', marginTop: 6 }}>
-            Tip: copy it from your Results URL (?user_id=…).
+            Tip: open your Results page URL and copy the <code>user_id</code> from there.
           </div>
         </div>
       )}
@@ -76,16 +82,21 @@ export default function CvAtsActivityPage() {
           color: '#fff',
           border: 'none',
           borderRadius: 8,
-          cursor: canSave ? 'pointer' : 'not-allowed'
+          fontWeight: 600,
+          cursor: canSave ? 'pointer' : 'not-allowed',
         }}
       >
         {status.kind === 'busy' ? 'Saving…' : 'Mark as done'}
       </button>
 
-      {status.msg && <p style={{ marginTop: 10 }}>{status.msg}</p>}
+      {status.msg && (
+        <p style={{ marginTop: 10, color: status.kind === 'error' ? 'crimson' : '#374151' }}>
+          {status.msg}
+        </p>
+      )}
 
       <div style={{ marginTop: 16 }}>
-        <a href={returnUrl} style={{ color: '#2563EB', textDecoration: 'none' }}>
+        <a href={returnUrl} style={{ textDecoration: 'none', color: '#2563EB' }}>
           ← Back to your results
         </a>
       </div>
