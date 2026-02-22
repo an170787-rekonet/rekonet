@@ -7,7 +7,7 @@ import { NextResponse } from 'next/server';
 /**
  * Supabase client import (ROOT /lib)
  * Your repo tree shows: lib/supabaseClient.js
- * We import the module namespace and normalize to `supabase`
+ * Import the module namespace and normalize to `supabase`
  * so it works for either named or default export.
  */
 import * as supa from '../../../../lib/supabaseClient';
@@ -84,44 +84,3 @@ const i18n = {
       {
         title: { en: '“Tell me about yourself” (5 min)', fr: '“Parlez‑moi de vous” (5 min)', pt: '“Fale sobre você” (5 min)', es: '“Háblame de ti” (5 min)', ta: '"உங்களைப் பற்றி சொல்லுங்கள்" (5 நிமி)', uk: '«Розкажіть про себе» (5 хв)', ar: '"حدّثني عن نفسك" (5 دقائق)' }[lang],
         why:   { en: 'Build interview confidence fast.', fr: 'Renforcez vite votre confiance en entretien.', pt: 'Ganha confiança rápida para entrevista.', es: 'Gana confianza rápida para la entrevista.', ta: 'நேர்காணல் நம்பிக்கை வளரும்.', uk: 'Швидко підвищує впевненість на співбесіді.', ar: 'يرفع ثقتك سريعًا في المقابلة.' }[lang],
-        next:  { en: 'Use the 3‑step template and record once.', fr: 'Modèle en 3 étapes, faites un essai.', pt: 'Use o modelo em 3 passos e grave 1 vez.', es: 'Usa el modelo de 3 pasos y graba una vez.', ta: '3 படி வார்ப்புருவைப் பயன்படுத்தி ஒரு முறை பதிவு செய்க.', uk: 'Скористайтесь 3‑кроковим шаблоном і зробіть запис.', ar: 'استخدم نموذج 3 خطوات وسجّل مرة واحدة.' }[lang],
-      },
-      {
-        title: { en: 'Join an online meeting (5 min)', fr: 'Rejoindre une réunion en ligne (5 min)', pt: 'Entrar numa reunião online (5 min)', es: 'Unirte a una reunión online (5 min)', ta: 'ஆன்லைன் கூட்டத்தில் சேர (5 நிமி)', uk: 'Долучіться до онлайн‑зустрічі (5 хв)', ar: 'الانضمام لاجتماع عبر الإنترنت (5 دقائق)' }[lang],
-        why:   { en: 'Real‑world practice builds momentum.', fr: 'La pratique concrète crée l’élan.', pt: 'Prática real cria impulso.', es: 'La práctica real crea impulso.', ta: 'நடைமுறை முயற்சி முன்னேற்றம் தரும்.', uk: 'Практика дає імпульс.', ar: 'الممارسة الواقعية تصنع زخمًا.' }[lang],
-        next:  { en: 'Do a sound check practice.', fr: 'Faites un test audio.', pt: 'Faça um teste de áudio.', es: 'Haz una prueba de audio.', ta: 'ஒலி சோதனையை முயற்சிக்கவும்.', uk: 'Зробіть перевірку звуку.', ar: 'أجرِ فحصًا للصوت.' }[lang],
-      },
-    ],
-    precision: ({ lang }) => [
-      {
-        title: { en: 'ATS CV tune (10 min)', fr: 'Ajuster le CV pour ATS (10 min)', pt: 'Ajuste ATS do CV (10 min)', es: 'Ajuste ATS del CV (10 min)', ta: 'ATS CV திருத்தம் (10 நிமி)', uk: 'Налаштування резюме під ATS (10 хв)', ar: 'ملاءمة السيرة الذاتية لنظام ATS (10 دقائق)' }[lang],
-        why:   { en: 'Align bullets to target role.', fr: 'Alignez vos points au rôle visé.', pt: 'Alinhe bullets ao cargo‑alvo.', es: 'Alinea bullets al rol objetivo.', ta: 'இலக்கு பணிக்கு புள்ளிகளை ஒத்திசைக்கவும்.', uk: 'Вирівняйте bullets під роль.', ar: 'وافق النقاط مع الدور المستهدف.' }[lang],
-        next:  { en: 'Update top 5 bullets.', fr: 'Mettez à jour 5 points clés.', pt: 'Atualize os 5 bullets principais.', es: 'Actualiza los 5 bullets principales.', ta: 'முன்னணி 5 புள்ளிகளைப் புதுப்பிக்கவும்.', uk: 'Оновіть 5 основних пунктів.', ar: 'حدّث أفضل 5 نقاط.' }[lang],
-      },
-      {
-        title: { en: 'Targeted job search (15 min)', fr: 'Recherche ciblée (15 min)', pt: 'Busca direcionada (15 min)', es: 'Búsqueda dirigida (15 min)', ta: 'இலக்கு வேலை தேடல் (15 நிமி)', uk: 'Таргетований пошук роботи (15 хв)', ar: 'بحث وظيفي موجّه (15 دقيقة)' }[lang],
-        why:   { en: 'Focus boosts response rates.', fr: 'Le ciblage augmente les réponses.', pt: 'Foco aumenta respostas.', es: 'El enfoque aumenta respuestas.', ta: 'கவனம் பதில் விகிதத்தை உயர்த்தும்.', uk: 'Фокус підвищує відгуки.', ar: 'التركيز يرفع معدلات الاستجابة.' }[lang],
-        next:  { en: 'Pick 3 titles × 5 companies; save tracker.', fr: '3 intitulés × 5 entreprises; enregistrez.', pt: '3 cargos × 5 empresas; salve o tracker.', es: '3 puestos × 5 empresas; guarda en el tracker.', ta: '3 பதவிகள் × 5 நிறுவனங்கள்; பதிவேடு சேமிக்கவும்.', uk: '3 назви × 5 компаній; збережіть у трекері.', ar: '3 مسميات × 5 شركات؛ احفظ في المتعقّب.' }[lang],
-      },
-      {
-        title: { en: 'Interview story bank (10 min)', fr: 'Banque d’histoires d’entretien (10 min)', pt: 'Banco de histórias (10 min)', es: 'Banco de historias (10 min)', ta: 'நேர்காணல் கதைகள் (10 நிமி)', uk: 'Банк історій (10 хв)', ar: 'بنك القصص للمقابلة (10 دقائق)' }[lang],
-        why:   { en: 'STAR examples convert interviews.', fr: 'Les exemples STAR font la différence.', pt: 'Exemplos STAR convertem entrevistas.', es: 'Ejemplos STAR convierten entrevistas.', ta: 'STAR உதாரணங்கள் மாற்றத்தை தரும்.', uk: 'Приклади STAR працюють.', ar: 'أمثلة STAR تحوّل المقابلات.' }[lang],
-        next:  { en: 'Write 3 concise STARs with outcomes.', fr: 'Rédigez 3 STAR concis avec résultats.', pt: 'Escreva 3 STAR concisos com resultados.', es: 'Escribe 3 STAR concisos con resultados.', ta: 'விளைவுகளுடன் 3 சுருக்கமான STAR எழுதவும்.', uk: 'Напишіть 3 стислих STAR з результатами.', ar: 'اكتب 3 أمثلة STAR موجزة بالنتائج.' }[lang],
-      },
-    ],
-  },
-};
-
-const reflectionI18n = {
-  en: 'Small steps build momentum — your next short activity is ready.',
-  fr: 'Les petits pas créent l’élan — votre prochaine activité courte est prête.',
-  pt: 'Pequenos passos criam impulso — sua próxima atividade curta está pronta.',
-  es: 'Los pequeños pasos crean impulso — tu próxima actividad corta está lista.',
-  ta: 'சிறு படிகள் முன்னேற்றம் தரும் — உங்கள் அடுத்த குறும் செயல்பாடு தயார்.',
-  uk: 'Малі кроки створюють імпульс — ваша наступна коротка активність готова.',
-  ar: 'الخطوات الصغيرة تصنع زخمًا — نشاطك القصير التالي جاهز.',
-};
-
-// ---------------- Supabase lookups with graceful fallbacks ----------------
-async function fetchCategoryMeans(assessmentId) {
-  try {
