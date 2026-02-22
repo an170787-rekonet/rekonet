@@ -168,7 +168,13 @@ const KEYWORD_I18N = {
   'packing list': 'lista de embalagem',
   'warehouse operations': 'operações de armazém',
   },
-  ta: { 'keywords': 'முக்கிய சொற்கள்' },
+  ta: { 
+    'keywords': 'முக்கிய சொற்கள்', 
+  'rms': 'சரக்கு மேலாண்மை அமைப்பு',
+  'picking list': 'எடுத்தல் பட்டியல்',
+  'packing list': 'பேக்கிங் பட்டியல்',
+  'warehouse operations': 'கிடங்கு செயல்பாடுகள்',
+  },
   uk: { 'keywords': 'Ключові слова' },
   en: {},
 };
