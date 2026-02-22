@@ -4,14 +4,8 @@ export const dynamic = 'force-dynamic';
 
 import { NextResponse } from 'next/server';
 
-/**
- * Supabase client import (ROOT /lib)
- * Your repo tree shows: lib/supabaseClient.js
- * Import the module namespace and normalize to `supabase`
- * so it works for either named or default export.
- */
-import * as supa from '../../../../lib/supabaseClient';
-const supabase = supa.supabase || supa.default;
+// ✅ Your client lives at lib/supabaseClient.js and exports `supabase` as a named export.
+import { supabase } from '../../../../lib/supabaseClient';
 
 // ---------------- Helpers ----------------
 const clamp01 = (x) => Math.max(0, Math.min(1, x));
@@ -167,15 +161,14 @@ async function fetchCategoryMeans(assessmentId) {
 async function fetchActivitiesPercent(userId) {
   if (!userId) return 0; // no user context → neutral fallback
   try {
-    // Expect a table like: activity_completions(user_id, activity_id, completed_at)
     const { data, error } = await supabase
       .from('activity_completions')
       .select('activity_id', { count: 'exact', head: true })
       .eq('user_id', userId);
 
     if (error) return 0;
-    const completed = data === null ? 0 : (data.length || 0); // head:true → length is 0; rely on count if available
-    const target = 5; // 5 completions == 100% of this lever (tunable)
+    const completed = data === null ? 0 : (data.length || 0); // head:true → length is 0
+    const target = 5; // 5 completions == 100%
     return Math.max(0, Math.min(100, Math.round((completed / target) * 100)));
   } catch {
     return 0;
@@ -185,7 +178,6 @@ async function fetchActivitiesPercent(userId) {
 async function fetchCvPercent(userId) {
   if (!userId) return 0;
   try {
-    // Expect: cv_versions(user_id, score_ai, delta_from_prev, updated_at)
     const { data, error } = await supabase
       .from('cv_versions')
       .select('score_ai, delta_from_prev')
@@ -196,7 +188,6 @@ async function fetchCvPercent(userId) {
     if (error || !data || !data[0]) return 0;
     const { score_ai = 0, delta_from_prev = 0 } = data[0];
     if (delta_from_prev >= 20 || score_ai >= 75) return 100;
-    // Simple scale: take best of delta*5 (so 20%→100) or score_ai
     return Math.max(0, Math.min(100, Math.round(Math.max(delta_from_prev * 5, score_ai))));
   } catch {
     return 0;
@@ -206,7 +197,6 @@ async function fetchCvPercent(userId) {
 async function fetchInterviewPercent(userId) {
   if (!userId) return 0;
   try {
-    // Expect: interview_sessions(user_id, score_24, completed_at)
     const { data, error } = await supabase
       .from('interview_sessions')
       .select('score_24')
@@ -216,7 +206,6 @@ async function fetchInterviewPercent(userId) {
 
     if (error || !data || !data[0]) return 0;
     const score = Number(data[0].score_24 || 0);
-    // Normalize around 18 = 100% (cap at 100)
     return Math.max(0, Math.min(100, Math.round((score / 18) * 100)));
   } catch {
     return 0;
@@ -270,7 +259,6 @@ function buildRoleSuggestions({ profiles, levelCode, interviewPct, certificates 
     if (!meetsLevel) gaps.push({ type: 'level', key: needsLevel, why: 'Increase overall level' });
     if (!meetsInterview) gaps.push({ type: 'interview', key: p.min_interview_score || 0, why: 'Build interview score' });
 
-    // Keywords (placeholder until CV keywords are parsed)
     if (Array.isArray(p.must_have_keywords) && p.must_have_keywords.length) {
       gaps.push({ type: 'keywords', key: p.must_have_keywords, why: 'Add role keywords to CV bullets' });
     }
@@ -286,7 +274,6 @@ function buildRoleSuggestions({ profiles, levelCode, interviewPct, certificates 
     }
   }
 
-  // Simple actions: link to activities that close common gaps
   const actions = [
     { title: 'ATS CV tune (10 min)', activityId: 'cv-ats-1' },
     { title: 'Create 3 STAR stories', activityId: 'int-star-1' },
@@ -301,19 +288,14 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const assessmentId = searchParams.get('assessment_id') || searchParams.get('assessmentId') || 'demo';
     const lang = (searchParams.get('language') || searchParams.get('lang') || 'en').toLowerCase();
-
-    // Optional user context (for progress and role suggestions)
     const userId = searchParams.get('user_id') || null;
 
-    // 1) Category means
     const byCategory = await fetchCategoryMeans(assessmentId);
     const overall = byCategory.reduce((a, c) => a + c.avg, 0) / (byCategory.length || 1);
 
-    // 2) Level & Path
     const lvl = levelFromMeans(overall);
     const path = decidePath({ overall, byCat: byCategory });
 
-    // 3) Progress components (graceful fallbacks if no user_id or rows)
     const [activitiesPct, cvPct, interviewPct] = await Promise.all([
       fetchActivitiesPercent(userId),
       fetchCvPercent(userId),
@@ -326,24 +308,21 @@ export async function GET(request) {
       interview: interviewPct,
     });
 
-    // 4) Flight‑path steps (localized) — FINAL FIX
+    // ✅ Correct: pick the path then call the function with { lang }
     const steps = i18n.steps[path]({ lang }).map((s) => ({
       title: s.title,
       why: s.why,
       next: s.next,
     }));
 
-    // 5) Summary & reflection (localized)
     const summary = {
       headline: i18n.headline[lang] || i18n.headline.en,
       message: i18n.message[lang] || i18n.message.en,
     };
     const reflection = reflectionI18n[lang] || reflectionI18n.en;
 
-    // 6) Role suggestions (seeded profiles → simple matcher)
     const profiles = await fetchRoleProfiles();
 
-    // If you store verified certificates in portfolio_items, pull them here (optional)
     let certificates = [];
     if (userId) {
       try {
