@@ -449,6 +449,17 @@ export default function ResultView({ assessmentId, language, userId = null }) {
 
   useEffect(() => { loadExperience(); }, [userId]);
 
+  // ========== ADD THIS HELPER (param-aware links) ==========
+  // Build activity links with the current params
+  const withParams = (base) => {
+    const q = new URLSearchParams();
+    q.set('assessment_id', assessmentId || 'demo');
+    q.set('language', (language || 'en').toLowerCase());
+    if (userId) q.set('user_id', userId);
+    return `${base}?${q.toString()}`;
+  };
+  // =========================================================
+
   if (loading) return <main style={{ padding: 24 }}>Loading…</main>;
   if (err) return <main style={{ padding: 24, color: 'crimson' }}>{err}</main>;
   if (!data) return <main style={{ padding: 24 }}>No data.</main>;
@@ -462,7 +473,7 @@ export default function ResultView({ assessmentId, language, userId = null }) {
   const totalMonths = expRows.reduce((acc, r) => acc + (Number(r?.months) || 0), 0);
   const experienceStage = monthsToStage(totalMonths);
 
-  // Build action chips for gaps
+  // Build action chips for gaps (use withParams here)
   const renderGap = (g) => {
     if (!g) return null;
     const L = ui.gapLabels;
@@ -485,7 +496,7 @@ export default function ResultView({ assessmentId, language, userId = null }) {
         {actions.length > 0 && (
           <div style={styles.chipsRow} dir={language === 'ar' ? 'rtl' : 'ltr'}>
             {actions.map((a, idx) => (
-              <Chip key={`${g.type}-${idx}`} href={a.href} lang={language}>
+              <Chip key={`${g.type}-${idx}`} href={withParams(a.href)} lang={language}>
                 {a.label}
               </Chip>
             ))}
