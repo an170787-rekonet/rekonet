@@ -89,14 +89,3 @@ const i18n = {
       {
         title: { en: 'Join an online meeting (5 min)', fr: 'Rejoindre une réunion en ligne (5 min)', pt: 'Entrar numa reunião online (5 min)', es: 'Unirte a una reunión online (5 min)', ta: 'ஆன்லைன் கூட்டத்தில் சேர (5 நிமி)', uk: 'Долучіться до онлайн‑зустрічі (5 хв)', ar: 'الانضمام لاجتماع عبر الإنترنت (5 دقائق)' }[lang],
         why:   { en: 'Real‑world practice builds momentum.', fr: 'La pratique concrète crée l’élan.', pt: 'Prática real cria impulso.', es: 'La práctica real crea impulso.', ta: 'நடைமுறை முயற்சி முன்னேற்றம் தரும்.', uk: 'Практика дає імпульс.', ar: 'الممارسة الواقعية تصنع زخمًا.' }[lang],
-        next:  { en: 'Do a sound check practice.', fr: 'Faites un test audio.', pt: 'Faça um teste de áudio.', es: 'Haz una prueba de audio.', ta: 'ஒலி சோதனையை முயற்சிக்கவும்.', uk: 'Зробіть перевірку звуку.', ar: 'أجرِ فحصًا للصوت.' }[lang],
-      },
-    ],
-    precision: ({ lang }) => [
-      {
-        title: { en: 'ATS CV tune (10 min)', fr: 'Ajuster le CV pour ATS (10 min)', pt: 'Ajuste ATS do CV (10 min)', es: 'Ajuste ATS del CV (10 min)', ta: 'ATS CV திருத்தம் (10 நிமி)', uk: 'Налаштування резюме під ATS (10 хв)', ar: 'ملاءمة السيرة الذاتية لنظام ATS (10 دقائق)' }[lang],
-        why:   { en: 'Align bullets to target role.', fr: 'Alignez vos points au rôle visé.', pt: 'Alinhe bullets ao cargo‑alvo.', es: 'Alinea bullets al rol objetivo.', ta: 'இலக்கு பணிக்கு புள்ளிகளை ஒத்திசைக்கவும்.', uk: 'Вирівняйте bullets під роль.', ar: 'وافق النقاط مع الدور المستهدف.' }[lang],
-        next:  { en: 'Update top 5 bullets.', fr: 'Mettez à jour 5 points clés.', pt: 'Atualize os 5 bullets principais.', es: 'Actualiza los 5 bullets principales.', ta: 'முன்னணி 5 புள்ளிகளைப் புதுப்பிக்கவும்.', uk: 'Оновіть 5 основних пунктів.', ar: 'حدّث أفضل 5 نقاط.' }[lang],
-      },
-      {
-        title: { en: 'Targeted job search (15 min)', fr: 'Recherche ciblée (15 min)', pt: 'Busca direcionada (15 min)', es: 'Búsqueda dirigida (15 min)', ta: 'இலக்கு வேலை தேடல் (15 நிமி)', uk: 'Таргетований пошук роботи (15 хв)', ar: 'بحث وظيفي موجّه (15 دقيقة)' }[lang],
