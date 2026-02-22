@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic';
 
 import { Suspense, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
+import ResultView from './ResultView';
 
 function ResultInner() {
   const sp = useSearchParams();
@@ -16,19 +17,9 @@ function ResultInner() {
     () => (sp.get('language') || sp.get('lang') || 'en').toLowerCase(),
     [sp]
   );
+  const userId = useMemo(() => sp.get('user_id') || null, [sp]);
 
-  // TODO: render your actual Result component here, e.g.
-  // return <ResultView assessmentId={assessmentId} language={language} />;
-
-  return (
-    <main style={{ maxWidth: 780, margin: '40px auto', padding: 16 }}>
-      <h2>Assessment Result</h2>
-      <p style={{ color: '#444' }}>
-        Loading your result for <strong>{assessmentId}</strong> in{' '}
-        <strong>{language.toUpperCase()}</strong>…
-      </p>
-    </main>
-  );
+  return <ResultView assessmentId={assessmentId} language={language} userId={userId} />;
 }
 
 export default function ResultPage() {
