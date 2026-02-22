@@ -1,5 +1,5 @@
 'use client';
-
+export const dynamic = 'force-dynamic';
 import { Suspense, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 
