@@ -1,12 +1,13 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 
 /* ——— Summary band (Level / Path / Readiness %) ——— */
 function SummaryBand({ lang = 'en', level, path, readiness }) {
   const isRTL = lang === 'ar';
 
-  // Lightweight client labels; your server i18n remains source of truth.
+  // Lightweight client labels; server i18n remains the source of truth.
   const LBL = {
     level: { en: 'Level', es: 'Nivel', fr: 'Niveau', pt: 'Nível', ta: 'நிலை', uk: 'Рівень', ar: 'المستوى' },
     path:  { en: 'Path',  es: 'Ruta',  fr: 'Parcours', pt: 'Percurso', ta: 'பாதை', uk: 'Шлях',  ar: 'المسار'  },
@@ -125,6 +126,65 @@ function SummaryBand({ lang = 'en', level, path, readiness }) {
   );
 }
 
+/* ——— Small “Chip” button for gap actions ——— */
+function Chip({ href, children, lang = 'en' }) {
+  const isRTL = lang === 'ar';
+  return (
+    <Link
+      href={href}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 6,
+        padding: '6px 10px',
+        borderRadius: 999,
+        fontSize: 12,
+        fontWeight: 600,
+        color: '#1F2937',
+        background: '#F3F4F6',
+        border: '1px solid #E5E7EB',
+        textDecoration: 'none',
+        outline: 'none',
+      }}
+      dir={isRTL ? 'rtl' : 'ltr'}
+      aria-label={typeof children === 'string' ? children : 'Action'}
+    >
+      {/* tiny dot */}
+      <span
+        aria-hidden
+        style={{
+          width: 6, height: 6, borderRadius: 999, background: '#111827',
+          display: 'inline-block',
+        }}
+      />
+      {children}
+    </Link>
+  );
+}
+
+/* ——— Map each gap to suggested actions (deep-links) ——— */
+function actionsForGap(g, ui, language) {
+  if (!g?.type) return [];
+
+  // Client labels for chips (kept minimal; can be extended)
+  const L = ui.actionLabels;
+
+  if (g.type === 'keywords') {
+    return [{ label: L.atsTune[language] || L.atsTune.en, href: '/activities/cv-ats-1' }];
+  }
+  if (g.type === 'interview') {
+    return [{ label: L.star3[language] || L.star3.en, href: '/activities/int-star-1' }];
+  }
+  if (g.type === 'level') {
+    return [
+      { label: L.atsTune[language] || L.atsTune.en, href: '/activities/cv-ats-1' },
+      { label: L.star3[language] || L.star3.en, href: '/activities/int-star-1' },
+    ];
+  }
+  // Certificates/other: no default action (placeholder for future)
+  return [];
+}
+
 export default function ResultView({ assessmentId, language, userId = null }) {
   const [data, setData] = useState(null);
   const [err, setErr] = useState('');
@@ -182,6 +242,17 @@ export default function ResultView({ assessmentId, language, userId = null }) {
         ta: 'சான்றிதழ்கள்', uk: 'Сертифікати', ar: 'الشهادات',
       },
     },
+    // NEW: action chip labels (minimal client i18n)
+    actionLabels: {
+      atsTune: {
+        en: 'ATS CV tune (10 min)', es: 'Ajuste ATS del CV (10 min)', fr: 'Ajuster le CV pour ATS (10 min)',
+        pt: 'Ajuste ATS do CV (10 min)', ta: 'ATS CV திருத்தம் (10 நிமி)', uk: 'Налаштування резюме під ATS (10 хв)', ar: 'ملاءمة السيرة الذاتية لنظام ATS (10 دقائق)',
+      },
+      star3: {
+        en: 'Create 3 STAR stories', es: 'Crea 3 historias STAR', fr: 'Rédiger 3 histoires STAR',
+        pt: 'Criar 3 histórias STAR', ta: '3 STAR கதைகள் உருவாக்கு', uk: 'Створіть 3 історії STAR', ar: 'أنشئ 3 قصص STAR',
+      },
+    },
   };
 
   // ===== Styles (inline, no external CSS) =====
@@ -224,6 +295,7 @@ export default function ResultView({ assessmentId, language, userId = null }) {
     }),
     why: { color: '#444', margin: '8px 0 4px' },
     gapList: { color: '#555', margin: '6px 0 0 0' },
+    chipsRow: { display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 },
   };
 
   // ===== Build query string from props =====
@@ -260,47 +332,47 @@ export default function ResultView({ assessmentId, language, userId = null }) {
   if (err) return <main style={{ padding: 24, color: 'crimson' }}>{err}</main>;
   if (!data) return <main style={{ padding: 24 }}>No data.</main>;
 
-  // NOTE: added `levels` and `path` here
+  // NOTE: added `levels` and `path` here for SummaryBand
   const { summary, reflection, flightPath = [], progress, roleSuggestions, levels, path } = data || {};
   const p = progress?.value ?? 0;
   const ready = roleSuggestions?.readyNow || [];
   const bridges = roleSuggestions?.bridgeRoles || [];
 
-  // Small helper to render gaps with localized captions
+  // Small helper to render gaps with localized captions + action chips
   const renderGap = (g) => {
     if (!g) return null;
     const L = ui.gapLabels;
+    let label;
     if (g.type === 'interview') {
-      return (
-        <li>
-          {(L.interviewMin[language] || L.interviewMin.en)}: {g.key}
-        </li>
-      );
+      label = `${(L.interviewMin[language] || L.interviewMin.en)}: ${g.key}`;
+    } else if (g.type === 'level') {
+      label = `${(L.levelReq[language] || L.levelReq.en)}: ${g.key}`;
+    } else if (g.type === 'keywords') {
+      const keys = Array.isArray(g.key) ? g.key.join(', ') : String(g.key);
+      label = `${(L.keywords[language] || L.keywords.en)}: ${keys}`;
+    } else if (g.type === 'certificate') {
+      const keys = Array.isArray(g.key) ? g.key.join(', ') : String(g.key);
+      label = `${(L.certificates[language] || L.certificates.en)}: ${keys}`;
+    } else {
+      label = '';
     }
-    if (g.type === 'level') {
-      return (
-        <li>
-          {(L.levelReq[language] || L.levelReq.en)}: {g.key}
-        </li>
-      );
-    }
-    if (g.type === 'keywords') {
-      return (
-        <li>
-          {(L.keywords[language] || L.keywords.en)}:{' '}
-          {Array.isArray(g.key) ? g.key.join(', ') : String(g.key)}
-        </li>
-      );
-    }
-    if (g.type === 'certificate') {
-      return (
-        <li>
-          {(L.certificates[language] || L.certificates.en)}:{' '}
-          {Array.isArray(g.key) ? g.key.join(', ') : String(g.key)}
-        </li>
-      );
-    }
-    return null;
+
+    const actions = actionsForGap(g, ui, language);
+
+    return (
+      <li>
+        {label}
+        {actions.length > 0 && (
+          <div style={styles.chipsRow} dir={language === 'ar' ? 'rtl' : 'ltr'}>
+            {actions.map((a, idx) => (
+              <Chip key={`${g.type}-${idx}`} href={a.href} lang={language}>
+                {a.label}
+              </Chip>
+            ))}
+          </div>
+        )}
+      </li>
+    );
   };
 
   const RoleCard = ({ item, variant }) => (
