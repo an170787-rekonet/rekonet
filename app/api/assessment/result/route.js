@@ -1,17 +1,16 @@
 // app/api/assessment/result/route.js
-
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 import { NextResponse } from 'next/server';
 
-// ⬇️ Correct relative path to app/_lib
-//   Use this if app/_lib/supabaseClient.js has: `export const supabase = ...`
-import { supabase } from '../../../_lib/supabaseClient';
-
-// ⬇️ If your client is a DEFAULT export (i.e., `export default createClient(...)`), 
-//    replace the line above with this one instead:
-// import supabase from '../../../_lib/supabaseClient';
+/**
+ * Supabase client import (REPO ROOT)
+ * Your build log shows supabaseClient.js is at: ./supabaseClient.js
+ * Import the module and normalize to `supabase` for either named or default export.
+ */
+import * as supa from '../../../../supabaseClient';
+const supabase = supa.supabase || supa.default;
 
 // ---------------- Helpers ----------------
 const clamp01 = (x) => Math.max(0, Math.min(1, x));
@@ -167,7 +166,6 @@ async function fetchCategoryMeans(assessmentId) {
 async function fetchActivitiesPercent(userId) {
   if (!userId) return 0; // no user context → neutral fallback
   try {
-    // Expect a table like: activity_completions(user_id, activity_id, completed_at)
     const { data, error } = await supabase
       .from('activity_completions')
       .select('activity_id', { count: 'exact', head: true })
@@ -175,8 +173,7 @@ async function fetchActivitiesPercent(userId) {
 
     if (error) return 0;
     const completed = data === null ? 0 : (data.length || 0); // head:true → length is 0; rely on count if available
-    // Simple target: 5 completions == 100%
-    const target = 5;
+    const target = 5; // 5 completions == 100% of this lever (tunable)
     return Math.max(0, Math.min(100, Math.round((completed / target) * 100)));
   } catch {
     return 0;
@@ -186,7 +183,6 @@ async function fetchActivitiesPercent(userId) {
 async function fetchCvPercent(userId) {
   if (!userId) return 0;
   try {
-    // Expect: cv_versions(user_id, score_ai, delta_from_prev, updated_at)
     const { data, error } = await supabase
       .from('cv_versions')
       .select('score_ai, delta_from_prev')
@@ -207,7 +203,6 @@ async function fetchCvPercent(userId) {
 async function fetchInterviewPercent(userId) {
   if (!userId) return 0;
   try {
-    // Expect: interview_sessions(user_id, score_24, completed_at)
     const { data, error } = await supabase
       .from('interview_sessions')
       .select('score_24')
@@ -271,7 +266,7 @@ function buildRoleSuggestions({ profiles, levelCode, interviewPct, certificates 
     if (!meetsLevel) gaps.push({ type: 'level', key: needsLevel, why: 'Increase overall level' });
     if (!meetsInterview) gaps.push({ type: 'interview', key: p.min_interview_score || 0, why: 'Build interview score' });
 
-    // Keywords (placeholder until CV keywords are parsed)
+    // Keywords (only check presence if we later parse CV keywords)
     if (Array.isArray(p.must_have_keywords) && p.must_have_keywords.length) {
       gaps.push({ type: 'keywords', key: p.must_have_keywords, why: 'Add role keywords to CV bullets' });
     }
@@ -327,7 +322,7 @@ export async function GET(request) {
       interview: interviewPct,
     });
 
-    // 4) Flight-path steps (localized)
+    // 4) Flight‑path steps (localized) — keep your original logic
     const steps = i18n.steps[path]({ lang }).map((s) => ({
       title: s.title,
       why: s.why,
