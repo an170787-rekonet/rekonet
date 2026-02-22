@@ -1,12 +1,17 @@
 // app/api/assessment/result/route.js
+
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 import { NextResponse } from 'next/server';
-// ⬇️ Adjust this import to your project
-// Option A (named export):
-import { supabase } from '../../../../lib/supabaseClient';
-// Option B (default export):
-// import supabase from '../../../../lib/supabaseClient';
+
+// ⬇️ Correct relative path to app/_lib
+//   Use this if app/_lib/supabaseClient.js has: `export const supabase = ...`
+import { supabase } from '../../../_lib/supabaseClient';
+
+// ⬇️ If your client is a DEFAULT export (i.e., `export default createClient(...)`), 
+//    replace the line above with this one instead:
+// import supabase from '../../../_lib/supabaseClient';
 
 // ---------------- Helpers ----------------
 const clamp01 = (x) => Math.max(0, Math.min(1, x));
@@ -77,7 +82,7 @@ const i18n = {
         next:  { en: 'Write 2–3 lines with our guide.', fr: 'Rédigez 2–3 lignes avec notre guide.', pt: 'Escreva 2–3 linhas com o nosso guia.', es: 'Escribe 2–3 líneas con nuestra guía.', ta: 'எங்கள் வழிகாட்டியுடன் 2–3 வரிகள் எழுதவும்.', uk: 'Напишіть 2–3 рядки за нашим гайдом.', ar: 'اكتب 2–3 أسطر باستخدام دليلنا.' }[lang],
       },
       {
-        title: { en: '“Tell me about yourself” (5 min)', fr: '“Parlez‑moi de vous” (5 min)', pt: '“Fale sobre você” (5 min)', es: '“Háblame de ti” (5 min)', ta: '\"உங்களைப் பற்றி சொல்லுங்கள்\" (5 நிமி)', uk: '«Розкажіть про себе» (5 хв)', ar: '\"حدّثني عن نفسك\" (5 دقائق)' }[lang],
+        title: { en: '“Tell me about yourself” (5 min)', fr: '“Parlez‑moi de vous” (5 min)', pt: '“Fale sobre você” (5 min)', es: '“Háblame de ti” (5 min)', ta: '"உங்களைப் பற்றி சொல்லுங்கள்" (5 நிமி)', uk: '«Розкажіть про себе» (5 хв)', ar: '"حدّثني عن نفسك" (5 دقائق)' }[lang],
         why:   { en: 'Build interview confidence fast.', fr: 'Renforcez vite votre confiance en entretien.', pt: 'Ganha confiança rápida para entrevista.', es: 'Gana confianza rápida para la entrevista.', ta: 'நேர்காணல் நம்பிக்கை வளரும்.', uk: 'Швидко підвищує впевненість на співбесіді.', ar: 'يرفع ثقتك سريعًا في المقابلة.' }[lang],
         next:  { en: 'Use the 3‑step template and record once.', fr: 'Modèle en 3 étapes, faites un essai.', pt: 'Use o modelo em 3 passos e grave 1 vez.', es: 'Usa el modelo de 3 pasos y graba una vez.', ta: '3 படி வார்ப்புருவைப் பயன்படுத்தி ஒரு முறை பதிவு செய்க.', uk: 'Скористайтесь 3‑кроковим шаблоном і зробіть запис.', ar: 'استخدم نموذج 3 خطوات وسجّل مرة واحدة.' }[lang],
       },
@@ -170,8 +175,8 @@ async function fetchActivitiesPercent(userId) {
 
     if (error) return 0;
     const completed = data === null ? 0 : (data.length || 0); // head:true → length is 0; rely on count if available
-    // Better: use count property from supabase-js v2 response meta (not returned here); keep simple:
-    const target = 5; // 5 completions == 100% of this lever (tunable)
+    // Simple target: 5 completions == 100%
+    const target = 5;
     return Math.max(0, Math.min(100, Math.round((completed / target) * 100)));
   } catch {
     return 0;
@@ -192,7 +197,7 @@ async function fetchCvPercent(userId) {
     if (error || !data || !data[0]) return 0;
     const { score_ai = 0, delta_from_prev = 0 } = data[0];
     if (delta_from_prev >= 20 || score_ai >= 75) return 100;
-    // Simple scale: take best of delta*5 (so 20%→100) or score_ai
+    // Simple scale: take best of delta*5 (so +20 → 100) or score_ai
     return Math.max(0, Math.min(100, Math.round(Math.max(delta_from_prev * 5, score_ai))));
   } catch {
     return 0;
@@ -266,7 +271,7 @@ function buildRoleSuggestions({ profiles, levelCode, interviewPct, certificates 
     if (!meetsLevel) gaps.push({ type: 'level', key: needsLevel, why: 'Increase overall level' });
     if (!meetsInterview) gaps.push({ type: 'interview', key: p.min_interview_score || 0, why: 'Build interview score' });
 
-    // Keywords (only check presence if we later parse CV keywords)
+    // Keywords (placeholder until CV keywords are parsed)
     if (Array.isArray(p.must_have_keywords) && p.must_have_keywords.length) {
       gaps.push({ type: 'keywords', key: p.must_have_keywords, why: 'Add role keywords to CV bullets' });
     }
