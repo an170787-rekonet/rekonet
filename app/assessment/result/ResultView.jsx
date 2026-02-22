@@ -2,6 +2,129 @@
 
 import { useEffect, useMemo, useState } from 'react';
 
+/* ——— Summary band (Level / Path / Readiness %) ——— */
+function SummaryBand({ lang = 'en', level, path, readiness }) {
+  const isRTL = lang === 'ar';
+
+  // Lightweight client labels; your server i18n remains source of truth.
+  const LBL = {
+    level: { en: 'Level', es: 'Nivel', fr: 'Niveau', pt: 'Nível', ta: 'நிலை', uk: 'Рівень', ar: 'المستوى' },
+    path:  { en: 'Path',  es: 'Ruta',  fr: 'Parcours', pt: 'Percurso', ta: 'பாதை', uk: 'Шлях',  ar: 'المسار'  },
+    ready: { en: 'Readiness', es: 'Preparación', fr: 'Préparation', pt: 'Prontidão', ta: 'தயார்நிலை', uk: 'Готовність', ar: 'الجاهزية' },
+    foundations: { en: 'Foundations', es: 'Fundamentos', fr: 'Fondations', pt: 'Fundamentos', ta: 'அடித்தளம்', uk: 'База', ar: 'الأساسيات' },
+    precision:   { en: 'Precision',   es: 'Precisión',  fr: 'Précision',   pt: 'Precisão',    ta: 'துல்லியம்', uk: 'Точність', ar: 'الدقّة' },
+  };
+
+  // Color helpers
+  const r = Number(readiness ?? 0);
+  const readinessBand = r < 25 ? 0 : r < 50 ? 1 : r < 75 ? 2 : r < 100 ? 3 : 4;
+  const bandColors = [
+    { bg: '#FFF7ED', text: '#9A3412', ring: '#FDBA74' }, // 0–24
+    { bg: '#FEF9C3', text: '#92400E', ring: '#FDE68A' }, // 25–49
+    { bg: '#ECFDF5', text: '#065F46', ring: '#6EE7B7' }, // 50–74
+    { bg: '#EEF2FF', text: '#3730A3', ring: '#A5B4FC' }, // 75–99
+    { bg: '#F0FDF4', text: '#166534', ring: '#4ADE80' }, // 100
+  ][readinessBand];
+
+  const levelCode = level?.code || 'L1';
+  const levelColor = {
+    L1: { bg: '#F3F4F6', text: '#374151' },
+    L2: { bg: '#DBEAFE', text: '#1E40AF' },
+    L3: { bg: '#E0E7FF', text: '#3730A3' },
+    L4: { bg: '#DCFCE7', text: '#166534' },
+  }[levelCode];
+
+  const pathKey = (path || '').toLowerCase() === 'precision' ? 'precision' : 'foundations';
+
+  return (
+    <section
+      dir={isRTL ? 'rtl' : 'ltr'}
+      style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr auto auto',
+        gap: 12,
+        alignItems: 'center',
+        padding: '12px 14px',
+        borderRadius: 10,
+        background: bandColors.bg,
+        border: `1px solid ${bandColors.ring}`,
+        margin: '12px 0',
+      }}
+      aria-label="Result summary"
+    >
+      {/* Level */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 14, color: '#6B7280', minWidth: 56 }}>
+          {LBL.level[lang] || LBL.level.en}
+        </span>
+        <span
+          style={{
+            fontWeight: 600,
+            fontSize: 14,
+            padding: '6px 10px',
+            borderRadius: 999,
+            background: levelColor.bg,
+            color: levelColor.text,
+            border: '1px solid rgba(0,0,0,0.05)',
+          }}
+        >
+          {level?.code || 'L1'} · {level?.tier || 'Beginner'}
+        </span>
+      </div>
+
+      {/* Path */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ fontSize: 14, color: '#6B7280' }}>
+          {LBL.path[lang] || LBL.path.en}
+        </span>
+        <span
+          style={{
+            fontWeight: 600,
+            fontSize: 14,
+            padding: '6px 10px',
+            borderRadius: 8,
+            background: '#F9FAFB',
+            color: '#111827',
+            border: '1px solid #E5E7EB',
+          }}
+        >
+          {LBL[pathKey][lang] || LBL[pathKey].en}
+        </span>
+      </div>
+
+      {/* Readiness % */}
+      <div
+        style={{
+          justifySelf: isRTL ? 'start' : 'end',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+        }}
+        aria-label="Readiness percent"
+      >
+        <span style={{ fontSize: 14, color: '#6B7280' }}>
+          {LBL.ready[lang] || LBL.ready.en}
+        </span>
+        <span
+          style={{
+            minWidth: 56,
+            textAlign: 'center',
+            fontWeight: 700,
+            fontSize: 16,
+            padding: '6px 10px',
+            borderRadius: 8,
+            color: bandColors.text,
+            background: '#FFFFFF',
+            border: `2px solid ${bandColors.ring}`,
+          }}
+        >
+          {Number.isFinite(r) ? `${r}%` : '—'}
+        </span>
+      </div>
+    </section>
+  );
+}
+
 export default function ResultView({ assessmentId, language, userId = null }) {
   const [data, setData] = useState(null);
   const [err, setErr] = useState('');
@@ -137,7 +260,8 @@ export default function ResultView({ assessmentId, language, userId = null }) {
   if (err) return <main style={{ padding: 24, color: 'crimson' }}>{err}</main>;
   if (!data) return <main style={{ padding: 24 }}>No data.</main>;
 
-  const { summary, reflection, flightPath = [], progress, roleSuggestions } = data || {};
+  // NOTE: added `levels` and `path` here
+  const { summary, reflection, flightPath = [], progress, roleSuggestions, levels, path } = data || {};
   const p = progress?.value ?? 0;
   const ready = roleSuggestions?.readyNow || [];
   const bridges = roleSuggestions?.bridgeRoles || [];
@@ -206,6 +330,14 @@ export default function ResultView({ assessmentId, language, userId = null }) {
       {/* Headline & message (already localized by API) */}
       <h2 style={{ marginTop: 0 }}>{summary?.headline || 'Your result'}</h2>
       <p style={{ color: '#444', marginTop: 4 }}>{summary?.message}</p>
+
+      {/* Summary band (Level / Path / Readiness %) */}
+      <SummaryBand
+        lang={language}
+        level={levels?.overall}
+        path={path}
+        readiness={progress?.value}
+      />
 
       {/* Progress bar */}
       <section style={{ margin: '20px 0' }}>
