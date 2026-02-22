@@ -37,7 +37,9 @@ function QuestionsInner() {
       setErr('');
       try {
         // IMPORTANT: real '&' (not &amp;)
-        const url = `/api/assessment/questions?assessment_id=${encodeURIComponent(assessment_id)}&language=${encodeURIComponent(clientLang)}`;
+        const url = `/api/assessment/questions?assessment_id=${encodeURIComponent(
+          assessment_id
+        )}&language=${encodeURIComponent(clientLang)}`;
         const res = await fetch(url, { cache: 'no-store' });
         const json = await res.json();
         if (!on) return;
@@ -101,7 +103,9 @@ function QuestionsInner() {
         setI(i + 1);
       } else {
         router.push(
-          `/assessment/result?assessment_id=${encodeURIComponent(assessment_id)}&language=${encodeURIComponent(serverLang)}`
+          `/assessment/result?assessment_id=${encodeURIComponent(
+            assessment_id
+          )}&language=${encodeURIComponent(serverLang)}`
         );
       }
     }
@@ -137,7 +141,8 @@ function QuestionsInner() {
         )}
       </section>
 
-      <div style={{ display: 'flex, gap: 8, flexWrap: 'wrap' }}>
+      {/* ✅ FIXED style object syntax here */}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         {scale.map((label, idx) => {
           const score = idx + 1; // 1..5
           return (
