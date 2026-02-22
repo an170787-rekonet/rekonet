@@ -43,7 +43,7 @@ function computeProgress({ levelCode, activities = 0, cv = 0, interview = 0 }) {
   return { value, band, withinReach: value >= 75 && value < 100, nextPrompt: prompts[band] };
 }
 
-// Localized strings (Option‑3 tone)
+// ---------------- i18n (Option‑3 tone) ----------------
 const i18n = {
   headline: {
     en: 'Your starting point', fr: 'Votre point de départ', pt: 'O seu ponto de partida', es: 'Tu punto de partida',
@@ -209,3 +209,225 @@ async function fetchCategoryMeans(assessmentId) {
 
     const buckets = new Map(); // key -> {sum,count}
     for (const row of data) {
+      const k = (row.category || 'general').toLowerCase();
+      if (!buckets.has(k)) buckets.set(k, { sum: 0, count: 0 });
+      const b = buckets.get(k);
+      b.sum += Number(row.value || 0);
+      b.count += 1;
+    }
+    const keys = ['cv', 'interview', 'jobsearch', 'digital'];
+    return keys.map((k) => {
+      const b = buckets.get(k);
+      const avg = b && b.count ? b.sum / b.count : 0;
+      return { key: k, avg: Number(avg.toFixed(2)) };
+    });
+  } catch {
+    return [
+      { key: 'cv',        avg: 2.8 },
+      { key: 'interview', avg: 3.1 },
+      { key: 'jobsearch', avg: 2.9 },
+      { key: 'digital',   avg: 3.2 },
+    ];
+  }
+}
+
+async function fetchActivitiesPercent(userId) {
+  if (!userId) return 0; // no user context → neutral fallback
+  try {
+    const { data, error } = await supabase
+      .from('activity_completions')
+      .select('activity_id', { count: 'exact', head: true })
+      .eq('user_id', userId);
+
+    if (error) return 0;
+    const completed = data === null ? 0 : (data.length || 0); // head:true → length is 0
+    const target = 5; // 5 completions == 100%
+    return Math.max(0, Math.min(100, Math.round((completed / target) * 100)));
+  } catch {
+    return 0;
+  }
+}
+
+async function fetchCvPercent(userId) {
+  if (!userId) return 0;
+  try {
+    const { data, error } = await supabase
+      .from('cv_versions')
+      .select('score_ai, delta_from_prev')
+      .eq('user_id', userId)
+      .order('updated_at', { ascending: false })
+      .limit(1);
+
+    if (error || !data || !data[0]) return 0;
+    const { score_ai = 0, delta_from_prev = 0 } = data[0];
+    if (delta_from_prev >= 20 || score_ai >= 75) return 100;
+    return Math.max(0, Math.min(100, Math.round(Math.max(delta_from_prev * 5, score_ai))));
+  } catch {
+    return 0;
+  }
+}
+
+async function fetchInterviewPercent(userId) {
+  if (!userId) return 0;
+  try {
+    const { data, error } = await supabase
+      .from('interview_sessions')
+      .select('score_24')
+      .eq('user_id', userId)
+      .order('completed_at', { ascending: false })
+      .limit(1);
+
+    if (error || !data || !data[0]) return 0;
+    const score = Number(data[0].score_24 || 0);
+    return Math.max(0, Math.min(100, Math.round((score / 18) * 100)));
+  } catch {
+    return 0;
+  }
+}
+
+async function fetchRoleProfiles() {
+  try {
+    const { data, error } = await supabase.from('role_profiles').select('*');
+    if (error || !Array.isArray(data)) return [];
+    return data;
+  } catch {
+    return [];
+  }
+}
+
+function meetLevel(levelCode, minOverallLevel) {
+  const rank = { L1: 1, L2: 2, L3: 3, L4: 4 };
+  const need = rank[minOverallLevel || 'L1'] || 1;
+  const got  = rank[levelCode || 'L1'] || 1;
+  return got >= need;
+}
+
+function buildRoleSuggestions({ profiles, levelCode, interviewPct, certificates = [] }) {
+  if (!profiles?.length) return { readyNow: [], bridgeRoles: [], gaps: [], actions: [] };
+
+  const readyNow = [];
+  const bridgeRoles = [];
+
+  const certProviders = new Set(
+    (certificates || [])
+      .filter((c) => c.verified)
+      .map((c) => (c.provider || '').toLowerCase())
+  );
+
+  for (const p of profiles) {
+    const needsLevel = p.min_overall_level || 'L1';
+    const meetsLevel = meetLevel(levelCode, needsLevel);
+
+    const meetsInterview = p.min_interview_score
+      ? interviewPct >= Math.min(100, Math.round((p.min_interview_score / 18) * 100))
+      : true;
+
+    const requiresCert = !!p.requires_certificate;
+    const hasPreferredCert = p.preferred_cert_providers?.some((prov) =>
+      certProviders.has((prov || '').toLowerCase())
+    );
+
+    const gaps = [];
+
+    if (!meetsLevel) gaps.push({ type: 'level', key: needsLevel, why: 'Increase overall level' });
+    if (!meetsInterview) gaps.push({ type: 'interview', key: p.min_interview_score || 0, why: 'Build interview score' });
+
+    if (Array.isArray(p.must_have_keywords) && p.must_have_keywords.length) {
+      gaps.push({ type: 'keywords', key: p.must_have_keywords, why: 'Add role keywords to CV bullets' });
+    }
+
+    if (requiresCert && !hasPreferredCert) {
+      gaps.push({ type: 'certificate', key: p.preferred_cert_providers || [], why: 'Upload/earn certificate' });
+    }
+
+    if (gaps.length === 0) {
+      readyNow.push({ title: p.title, match: 86, why: 'Meets current baselines' });
+    } else if (gaps.length <= 2) {
+      bridgeRoles.push({ title: p.title, why: 'One or two fast gaps to close', gaps });
+    }
+  }
+
+  const actions = [
+    { title: 'ATS CV tune (10 min)', activityId: 'cv-ats-1' },
+    { title: 'Create 3 STAR stories', activityId: 'int-star-1' },
+  ];
+
+  return { readyNow, bridgeRoles, gaps: [], actions };
+}
+
+// ---------------- Route ----------------
+export async function GET(request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const assessmentId = searchParams.get('assessment_id') || searchParams.get('assessmentId') || 'demo';
+    const lang = (searchParams.get('language') || searchParams.get('lang') || 'en').toLowerCase();
+    const userId = searchParams.get('user_id') || null;
+
+    const byCategory = await fetchCategoryMeans(assessmentId);
+    const overall = byCategory.reduce((a, c) => a + c.avg, 0) / (byCategory.length || 1);
+
+    const lvl = levelFromMeans(overall);
+    const path = decidePath({ overall, byCat: byCategory });
+
+    const [activitiesPct, cvPct, interviewPct] = await Promise.all([
+      fetchActivitiesPercent(userId),
+      fetchCvPercent(userId),
+      fetchInterviewPercent(userId),
+    ]);
+    const progress = computeProgress({
+      levelCode: lvl.code,
+      activities: activitiesPct,
+      cv: cvPct,
+      interview: interviewPct,
+    });
+
+    // ✅ Flight‑path steps (localized)
+    const steps = i18n.steps[path]({ lang }).map((s) => ({
+      title: s.title,
+      why: s.why,
+      next: s.next,
+    }));
+
+    const summary = {
+      headline: i18n.headline[lang] || i18n.headline.en,
+      message: i18n.message[lang] || i18n.message.en,
+    };
+    const reflection = reflectionI18n[lang] || reflectionI18n.en;
+
+    const profiles = await fetchRoleProfiles();
+
+    let certificates = [];
+    if (userId) {
+      try {
+        const { data } = await supabase
+          .from('portfolio_items')
+          .select('provider, verified')
+          .eq('user_id', userId);
+        certificates = Array.isArray(data) ? data : [];
+      } catch {}
+    }
+
+    // Build suggestions, then localize keywords/certs for the requested language
+    const roleSuggestionsRaw = buildRoleSuggestions({
+      profiles,
+      levelCode: lvl.code,
+      interviewPct,
+      certificates,
+    });
+    const roleSuggestions = localizeRoleSuggestions(roleSuggestionsRaw, lang);
+
+    return NextResponse.json({
+      assessmentId,
+      language: lang,
+      levels: { overall: lvl, byCategory },
+      path,
+      summary,
+      reflection,
+      flightPath: steps,
+      progress,
+      roleSuggestions,
+    });
+  } catch (e) {
+    return NextResponse.json({ ok: false, error: String(e?.message || e) }, { status: 500 });
+  }
+}
