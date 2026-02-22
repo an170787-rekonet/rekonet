@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 // Read a cookie by name
@@ -11,7 +11,7 @@ function getCookie(name) {
   return m ? decodeURIComponent(m[1]) : null;
 }
 
-export default function AssessmentStart() {
+function AssessmentStartInner() {
   const router = useRouter();
   const sp = useSearchParams();
 
@@ -52,7 +52,7 @@ export default function AssessmentStart() {
         // swallow; fall back to 'demo'
       }
 
-      // ✅ IMPORTANT: real '&language=' (not &amp;)
+      // ✅ IMPORTANT: real '&language=' (not &amp;language=)
       router.push(
         `/assessment/questions?assessment_id=${encodeURIComponent(id)}&language=${encodeURIComponent(language)}`
       );
@@ -81,5 +81,14 @@ export default function AssessmentStart() {
         <Link href="/assessment/language">Change it here</Link>.
       </p>
     </main>
+  );
+}
+
+// ✅ Page wrapper with Suspense (required when using useSearchParams on the page)
+export default function AssessmentStart() {
+  return (
+    <Suspense fallback={<main style={{ padding: 24 }}>Loading…</main>}>
+      <AssessmentStartInner />
+    </Suspense>
   );
 }
