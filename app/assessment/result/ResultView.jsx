@@ -29,6 +29,18 @@ export default function ResultView({ assessmentId, language, userId = null }) {
       en: 'Bridge roles (1–2 gaps)', es: 'Roles puente (1–2 brechas)', fr: 'Rôles passerelle (1–2 écarts)', pt: 'Funções ponte (1–2 lacunas)',
       ta: 'பாலம் வேடங்கள் (1–2 இடைவெளிகள்)', uk: 'Ролі‑містки (1–2 прогалини)', ar: 'أدوار الجسر (فجوة أو فجوتان)',
     },
+    // Badge labels
+    badge: {
+      ready: {
+        en: 'Ready', es: 'Listo', fr: 'Prêt', pt: 'Pronto',
+        ta: 'தயார்', uk: 'Готово', ar: 'جاهز',
+      },
+      bridge: {
+        en: 'Bridge', es: 'Puente', fr: 'Passerelle', pt: 'Ponte',
+        ta: 'பாலம்', uk: 'Місток', ar: 'جسر',
+      },
+    },
+    // Gap captions
     gapLabels: {
       interviewMin: {
         en: 'Interview minimum', es: 'Entrevista mínima', fr: 'Seuil d’entretien', pt: 'Mínimo de entrevista',
@@ -47,6 +59,48 @@ export default function ResultView({ assessmentId, language, userId = null }) {
         ta: 'சான்றிதழ்கள்', uk: 'Сертифікати', ar: 'الشهادات',
       },
     },
+  };
+
+  // ===== Styles (inline, no external CSS) =====
+  const styles = {
+    container: {
+      maxWidth: 820, margin: '40px auto', padding: 16,
+    },
+    progressBarOuter: {
+      height: 12, background: '#eee', borderRadius: 6, overflow: 'hidden',
+    },
+    progressBarInner: (p) => ({
+      width: `${p}%`, height: '100%',
+      background: p >= 75 ? '#16a34a' : '#3b82f6',
+      transition: 'width 400ms ease',
+    }),
+    roleGroup: { marginTop: 24 },
+    card: {
+      border: '1px solid #e5e7eb',
+      borderRadius: 8,
+      boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+      padding: 14,
+      marginBottom: 12,
+      background: '#fff',
+    },
+    cardHeader: {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 12,
+    },
+    title: { margin: 0, fontWeight: 600 },
+    badge: (variant) => ({
+      fontSize: 12,
+      padding: '2px 8px',
+      borderRadius: 999,
+      ...(variant === 'ready'
+        ? { background: '#DCFCE7', color: '#166534', border: '1px solid #86efac' }
+        : { background: '#FEF3C7', color: '#92400E', border: '1px solid #fcd34d' }),
+      whiteSpace: 'nowrap',
+    }),
+    why: { color: '#444', margin: '8px 0 4px' },
+    gapList: { color: '#555', margin: '6px 0 0 0' },
   };
 
   // ===== Build query string from props =====
@@ -88,10 +142,66 @@ export default function ResultView({ assessmentId, language, userId = null }) {
   const ready = roleSuggestions?.readyNow || [];
   const bridges = roleSuggestions?.bridgeRoles || [];
 
+  // Small helper to render gaps with localized captions
+  const renderGap = (g) => {
+    if (!g) return null;
+    const L = ui.gapLabels;
+    if (g.type === 'interview') {
+      return (
+        <li>
+          {(L.interviewMin[language] || L.interviewMin.en)}: {g.key}
+        </li>
+      );
+    }
+    if (g.type === 'level') {
+      return (
+        <li>
+          {(L.levelReq[language] || L.levelReq.en)}: {g.key}
+        </li>
+      );
+    }
+    if (g.type === 'keywords') {
+      return (
+        <li>
+          {(L.keywords[language] || L.keywords.en)}:{' '}
+          {Array.isArray(g.key) ? g.key.join(', ') : String(g.key)}
+        </li>
+      );
+    }
+    if (g.type === 'certificate') {
+      return (
+        <li>
+          {(L.certificates[language] || L.certificates.en)}:{' '}
+          {Array.isArray(g.key) ? g.key.join(', ') : String(g.key)}
+        </li>
+      );
+    }
+    return null;
+  };
+
+  const RoleCard = ({ item, variant }) => (
+    <article style={styles.card}>
+      <header style={styles.cardHeader}>
+        <h4 style={styles.title}>{item.title}</h4>
+        <span style={styles.badge(variant)}>
+          {variant === 'ready'
+            ? (ui.badge.ready[language] || ui.badge.ready.en)
+            : (ui.badge.bridge[language] || ui.badge.bridge.en)}
+        </span>
+      </header>
+      {item.why && <p style={styles.why}>{item.why}</p>}
+      {Array.isArray(item.gaps) && item.gaps.length > 0 && (
+        <ul style={styles.gapList}>
+          {item.gaps.map((g, i) => <span key={i}>{renderGap(g)}</span>)}
+        </ul>
+      )}
+    </article>
+  );
+
   return (
     <main
       dir={language === 'ar' ? 'rtl' : 'ltr'}
-      style={{ maxWidth: 820, margin: '40px auto', padding: 16 }}
+      style={styles.container}
     >
       {/* Headline & message (already localized by API) */}
       <h2 style={{ marginTop: 0 }}>{summary?.headline || 'Your result'}</h2>
@@ -102,15 +212,8 @@ export default function ResultView({ assessmentId, language, userId = null }) {
         <label style={{ display: 'block', marginBottom: 8 }}>
           <strong>{ui.progress[language] || ui.progress.en}</strong>
         </label>
-        <div style={{ height: 12, background: '#eee', borderRadius: 6, overflow: 'hidden' }}>
-          <div
-            style={{
-              width: `${p}%`,
-              height: '100%',
-              background: p >= 75 ? '#16a34a' : '#3b82f6',
-              transition: 'width 400ms ease',
-            }}
-          />
+        <div style={styles.progressBarOuter}>
+          <div style={styles.progressBarInner(p)} />
         </div>
         <div style={{ fontSize: 12, color: '#444', marginTop: 6 }}>{p}%</div>
         {progress?.nextPrompt && (
@@ -132,67 +235,31 @@ export default function ResultView({ assessmentId, language, userId = null }) {
         </ol>
       </section>
 
-      {/* Role suggestions */}
-      <section style={{ marginTop: 24 }}>
+      {/* Role suggestions (cards) */}
+      <section style={styles.roleGroup}>
         <h3 style={{ marginBottom: 8 }}>{ui.suggestedRoles[language] || ui.suggestedRoles.en}</h3>
 
+        {/* Ready now cards */}
         {ready.length > 0 && (
           <>
-            <h4 style={{ color: '#16a34a', marginBottom: 4 }}>
+            <h4 style={{ color: '#16a34a', margin: '8px 0' }}>
               {ui.readyHeading[language] || ui.readyHeading.en}
             </h4>
-            <ul>
-              {ready.map((r) => (
-                <li key={r.title} style={{ marginBottom: 6 }}>
-                  <strong>{r.title}</strong> — {r.why} {typeof r.match === 'number' ? `(${r.match}%)` : ''}
-                </li>
-              ))}
-            </ul>
+            {ready.map((r) => (
+              <RoleCard key={`ready-${r.title}`} item={r} variant="ready" />
+            ))}
           </>
         )}
 
+        {/* Bridge role cards */}
         {bridges.length > 0 && (
           <>
-            <h4 style={{ color: '#a16207', margin: '12px 0 4px' }}>
+            <h4 style={{ color: '#a16207', margin: '14px 0 8px' }}>
               {ui.bridgeHeading[language] || ui.bridgeHeading.en}
             </h4>
-            <ul>
-              {bridges.map((r) => (
-                <li key={r.title} style={{ marginBottom: 10 }}>
-                  <strong>{r.title}</strong> — {r.why}
-                  {Array.isArray(r.gaps) && r.gaps.length > 0 && (
-                    <ul style={{ marginTop: 6 }}>
-                      {r.gaps.map((g, i) => (
-                        <li key={i} style={{ color: '#555' }}>
-                          {g.type === 'interview' && (
-                            <>
-                              {ui.gapLabels.interviewMin[language] || ui.gapLabels.interviewMin.en}: {g.key}
-                            </>
-                          )}
-                          {g.type === 'level' && (
-                            <>
-                              {ui.gapLabels.levelReq[language] || ui.gapLabels.levelReq.en}: {g.key}
-                            </>
-                          )}
-                          {g.type === 'keywords' && (
-                            <>
-                              {ui.gapLabels.keywords[language] || ui.gapLabels.keywords.en}:{' '}
-                              {Array.isArray(g.key) ? g.key.join(', ') : String(g.key)}
-                            </>
-                          )}
-                          {g.type === 'certificate' && (
-                            <>
-                              {ui.gapLabels.certificates[language] || ui.gapLabels.certificates.en}:{' '}
-                              {Array.isArray(g.key) ? g.key.join(', ') : String(g.key)}
-                            </>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </li>
-              ))}
-            </ul>
+            {bridges.map((r) => (
+              <RoleCard key={`bridge-${r.title}`} item={r} variant="bridge" />
+            ))}
           </>
         )}
 
