@@ -130,6 +130,10 @@ const KEYWORD_I18N = {
     'h&s': 'Salud y Seguridad',
     'health & safety': 'Salud y Seguridad',
     'food hygiene': 'Higiene alimentaria',
+    'rms': 'sistema de gestión de inventario',
+    'picking list': 'lista de preparación',
+    'packing list': 'lista de empaquetado',
+    'warehouse operations': 'operaciones de almacén',
   },
   ar: {
     'keywords': 'الكلمات المفتاحية',
