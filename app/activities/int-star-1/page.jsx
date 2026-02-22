@@ -37,13 +37,14 @@ export default function IntStarActivityPage() {
     }
     setStatus({ kind: 'busy', msg: 'Saving…' });
 
-    const payload = { star1, star2, star3 };
+    const payload = { star1: star1.trim(), star2: star2.trim(), star3: star3.trim() };
 
     let { error } = await supabase
       .from('activity_completions')
       .insert([{ user_id: userId, activity_id: 'int-star-1', details: payload }]);
 
-    if (error && /details/i.test(error.message)) {
+    if (error && /details/i.test(error.message || '')) {
+      // Fallback if `details` column doesn’t exist yet
       const fallback = await supabase
         .from('activity_completions')
         .insert([{ user_id: userId, activity_id: 'int-star-1' }]);
@@ -79,6 +80,9 @@ export default function IntStarActivityPage() {
             placeholder="paste your user_id"
             style={{ width: '100%', padding: 8, marginTop: 6 }}
           />
+          <div style={{ fontSize: 12, color: '#666', marginTop: 6 }}>
+            Tip: copy it from your Results URL (?user_id=…).
+          </div>
         </div>
       )}
 
@@ -107,6 +111,12 @@ export default function IntStarActivityPage() {
       </button>
 
       {status.msg && <p style={{ marginTop: 10 }}>{status.msg}</p>}
+
+      <div style={{ marginTop: 16 }}>
+        <a href={returnUrl} style={{ color: '#2563EB', textDecoration: 'none' }}>
+          ← Back to your results
+        </a>
+      </div>
     </main>
   );
 }
