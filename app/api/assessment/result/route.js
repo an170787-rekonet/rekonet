@@ -175,7 +175,13 @@ const KEYWORD_I18N = {
   'packing list': 'பேக்கிங் பட்டியல்',
   'warehouse operations': 'கிடங்கு செயல்பாடுகள்',
   },
-  uk: { 'keywords': 'Ключові слова' },
+  uk: { 
+    'keywords': 'Ключові слова',
+  'rms': 'система управління запасами',
+  'picking list': 'відбірковий лист',
+  'packing list': 'пакувальний лист',
+  'warehouse operations': 'складські операції',
+  },
   en: {},
 };
 
