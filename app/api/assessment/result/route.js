@@ -3,8 +3,6 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 import { NextResponse } from 'next/server';
-
-// ✅ Your client lives at lib/supabaseClient.js and exports `supabase` as a named export.
 import { supabase } from '../../../../lib/supabaseClient';
 
 // ---------------- Helpers ----------------
@@ -116,7 +114,7 @@ const reflectionI18n = {
   ar: 'الخطوات الصغيرة تصنع زخمًا — نشاطك القصير التالي جاهز.',
 };
 
-// ---------------- Keyword translation (API-side, Option A) ----------------
+// ---------------- Keyword & Title translation (API-side, Option A) ----------------
 const KEYWORD_I18N = {
   es: {
     'keywords': 'Palabras clave',
@@ -152,14 +150,31 @@ const KEYWORD_I18N = {
   pt: { 'keywords': 'Palavras‑chave' },
   ta: { 'keywords': 'முக்கிய சொற்கள்' },
   uk: { 'keywords': 'Ключові слова' },
-  en: {}, // no-op
+  en: {},
+};
+
+const TITLE_I18N = {
+  es: {
+    'Customer Service Advisor': 'Asesor de Atención al Cliente',
+    'Admin Assistant': 'Asistente administrativo',
+    'Warehouse Operative': 'Operario de almacén',
+  },
+  ar: {
+    'Customer Service Advisor': 'ممثل خدمة العملاء',
+    'Admin Assistant': 'مساعد إداري',
+    'Warehouse Operative': 'عامل مستودع',
+  },
 };
 
 function translateTerm(term = '', lang = 'en') {
   const map = KEYWORD_I18N[lang] || {};
   const t = String(term || '').trim();
   const key = t.toLowerCase();
-  return map[key] || t; // fallback to original
+  return map[key] || t; // fallback to original term
+}
+function translateTitle(title = '', lang = 'en') {
+  const map = TITLE_I18N[lang] || {};
+  return map[title] || title;
 }
 
 function localizeRoleSuggestions(rs, lang) {
@@ -170,22 +185,17 @@ function localizeRoleSuggestions(rs, lang) {
   ['readyNow', 'bridgeRoles'].forEach((bucket) => {
     if (!Array.isArray(out[bucket])) return;
     out[bucket] = out[bucket].map((item) => {
-      const copy = { ...item };
+      const copy = { ...item, title: translateTitle(item.title, lang) };
       if (Array.isArray(copy.gaps)) {
         copy.gaps = copy.gaps.map((g) => {
-          if (g?.type === 'keywords') {
-            return { ...g, key: translateList(g.key) };
-          }
-          if (g?.type === 'certificate') {
-            return { ...g, key: translateList(g.key) };
-          }
+          if (g?.type === 'keywords') return { ...g, key: translateList(g.key) };
+          if (g?.type === 'certificate') return { ...g, key: translateList(g.key) };
           return g;
         });
       }
       return copy;
     });
   });
-
   return out;
 }
 
@@ -198,7 +208,6 @@ async function fetchCategoryMeans(assessmentId) {
       .eq('assessment_id', assessmentId);
 
     if (error || !Array.isArray(data) || data.length === 0) {
-      // Fallback demo means if no rows yet
       return [
         { key: 'cv',        avg: 2.8 },
         { key: 'interview', avg: 3.1 },
@@ -232,7 +241,7 @@ async function fetchCategoryMeans(assessmentId) {
 }
 
 async function fetchActivitiesPercent(userId) {
-  if (!userId) return 0; // no user context → neutral fallback
+  if (!userId) return 0;
   try {
     const { data, error } = await supabase
       .from('activity_completions')
@@ -241,7 +250,7 @@ async function fetchActivitiesPercent(userId) {
 
     if (error) return 0;
     const completed = data === null ? 0 : (data.length || 0); // head:true → length is 0
-    const target = 5; // 5 completions == 100%
+    const target = 5;
     return Math.max(0, Math.min(100, Math.round((completed / target) * 100)));
   } catch {
     return 0;
@@ -363,12 +372,15 @@ export async function GET(request) {
     const lang = (searchParams.get('language') || searchParams.get('lang') || 'en').toLowerCase();
     const userId = searchParams.get('user_id') || null;
 
+    // 1) Category means
     const byCategory = await fetchCategoryMeans(assessmentId);
     const overall = byCategory.reduce((a, c) => a + c.avg, 0) / (byCategory.length || 1);
 
+    // 2) Level & Path
     const lvl = levelFromMeans(overall);
     const path = decidePath({ overall, byCat: byCategory });
 
+    // 3) Progress components
     const [activitiesPct, cvPct, interviewPct] = await Promise.all([
       fetchActivitiesPercent(userId),
       fetchCvPercent(userId),
@@ -381,19 +393,21 @@ export async function GET(request) {
       interview: interviewPct,
     });
 
-    // ✅ Flight‑path steps (localized)
+    // 4) Flight‑path steps (localized) — CORRECT CALL
     const steps = i18n.steps[path]({ lang }).map((s) => ({
       title: s.title,
       why: s.why,
       next: s.next,
     }));
 
+    // 5) Summary & reflection
     const summary = {
       headline: i18n.headline[lang] || i18n.headline.en,
       message: i18n.message[lang] || i18n.message.en,
     };
     const reflection = reflectionI18n[lang] || reflectionI18n.en;
 
+    // 6) Role suggestions (then localize keywords/titles)
     const profiles = await fetchRoleProfiles();
 
     let certificates = [];
@@ -407,7 +421,6 @@ export async function GET(request) {
       } catch {}
     }
 
-    // Build suggestions, then localize keywords/certs for the requested language
     const roleSuggestionsRaw = buildRoleSuggestions({
       profiles,
       levelCode: lvl.code,
@@ -416,6 +429,7 @@ export async function GET(request) {
     });
     const roleSuggestions = localizeRoleSuggestions(roleSuggestionsRaw, lang);
 
+    // 7) Respond
     return NextResponse.json({
       assessmentId,
       language: lang,
