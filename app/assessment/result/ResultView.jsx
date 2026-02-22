@@ -390,3 +390,235 @@ export default function ResultView({ assessmentId, language, userId = null }) {
       borderRadius: 999,
       ...(variant === 'ready'
         ? { background: '#DCFCE7', color: '#166534', border: '1px solid #86efac' }
+        : { background: '#FEF3C7', color: '#92400E', border: '1px solid #fcd34d' }),
+      whiteSpace: 'nowrap',
+    }),
+    why: { color: '#444', margin: '8px 0 4px' },
+    gapList: { color: '#555', margin: '6px 0 0 0' },
+    chipsRow: { display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 },
+    expRow: { display: 'flex', gap: 8, alignItems: 'center', marginTop: -8, marginBottom: 12 },
+  };
+
+  // ===== Build query string from props =====
+  const qs = useMemo(() => {
+    const params = new URLSearchParams();
+    params.set('assessment_id', assessmentId || 'demo');
+    params.set('language', (language || 'en').toLowerCase());
+    if (userId) params.set('user_id', userId);
+    return params.toString();
+  }, [assessmentId, language, userId]);
+
+  // ===== Fetch Result API =====
+  useEffect(() => {
+    let on = true;
+    setLoading(true);
+    setErr('');
+    (async () => {
+      try {
+        const res = await fetch(`/api/assessment/result?${qs}`, { cache: 'no-store' });
+        const json = await res.json();
+        if (!on) return;
+        if (res.ok) setData(json);
+        else setErr(json?.error || 'Could not load result.');
+      } catch (e) {
+        if (on) setErr(String(e?.message || e));
+      } finally {
+        if (on) setLoading(false);
+      }
+    })();
+    return () => { on = false; };
+  }, [qs]);
+
+  // ===== Fetch Experience evidence (client-side) =====
+  async function loadExperience() {
+    if (!userId) { setExpRows([]); return; }
+    setExpLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('experience_evidence')
+        .select('domain, months')
+        .eq('user_id', userId);
+      if (error) throw error;
+      setExpRows(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error('experience load', e);
+    } finally {
+      setExpLoading(false);
+    }
+  }
+
+  useEffect(() => { loadExperience(); }, [userId]);
+
+  if (loading) return <main style={{ padding: 24 }}>Loading…</main>;
+  if (err) return <main style={{ padding: 24, color: 'crimson' }}>{err}</main>;
+  if (!data) return <main style={{ padding: 24 }}>No data.</main>;
+
+  const { summary, reflection, flightPath = [], progress, roleSuggestions, path } = data || {};
+  const p = progress?.value ?? 0;
+  const ready = roleSuggestions?.readyNow || [];
+  const bridges = roleSuggestions?.bridgeRoles || [];
+
+  // Compute Experience stage from saved rows
+  const totalMonths = expRows.reduce((acc, r) => acc + (Number(r?.months) || 0), 0);
+  const experienceStage = monthsToStage(totalMonths);
+
+  // Build action chips for gaps
+  const renderGap = (g) => {
+    if (!g) return null;
+    const L = ui.gapLabels;
+    let label = '';
+    if (g.type === 'interview') {
+      label = `${L.interviewMin[language] || L.interviewMin.en}: ${g.key}`;
+    } else if (g.type === 'level') {
+      label = `${L.levelReq[language] || L.levelReq.en}: ${g.key}`;
+    } else if (g.type === 'keywords') {
+      const keys = Array.isArray(g.key) ? g.key.join(', ') : String(g.key);
+      label = `${L.keywords[language] || L.keywords.en}: ${keys}`;
+    } else if (g.type === 'certificate') {
+      const keys = Array.isArray(g.key) ? g.key.join(', ') : String(g.key);
+      label = `${L.certificates[language] || L.certificates.en}: ${keys}`;
+    }
+    const actions = actionsForGap(g, ui, language);
+    return (
+      <li>
+        {label}
+        {actions.length > 0 && (
+          <div style={styles.chipsRow} dir={language === 'ar' ? 'rtl' : 'ltr'}>
+            {actions.map((a, idx) => (
+              <Chip key={`${g.type}-${idx}`} href={a.href} lang={language}>
+                {a.label}
+              </Chip>
+            ))}
+          </div>
+        )}
+      </li>
+    );
+  };
+
+  const RoleCard = ({ item, variant }) => (
+    <article style={styles.card}>
+      <header style={styles.cardHeader}>
+        <h4 style={styles.title}>{item.title}</h4>
+        <span style={styles.badge(variant)}>
+          {variant === 'ready'
+            ? (ui.badge.ready[language] || ui.badge.ready.en)
+            : (ui.badge.bridge[language] || ui.badge.bridge.en)}
+        </span>
+      </header>
+      {item.why && <p style={styles.why}>{item.why}</p>}
+      {Array.isArray(item.gaps) && item.gaps.length > 0 && (
+        <ul style={styles.gapList}>
+          {item.gaps.map((g, i) => <span key={i}>{renderGap(g)}</span>)}
+        </ul>
+      )}
+    </article>
+  );
+
+  return (
+    <main dir={language === 'ar' ? 'rtl' : 'ltr'} style={styles.container}>
+      {/* Headline & message (already localized by API) */}
+      <h2 style={{ marginTop: 0 }}>{summary?.headline || 'Your starting point'}</h2>
+      <p style={{ color: '#444', marginTop: 4 }}>{summary?.message}</p>
+
+      {/* Support band: Path + Experience + Readiness */}
+      <SupportBand
+        lang={language}
+        path={path}
+        readiness={progress?.value}
+        experienceStage={experienceStage}
+      />
+
+      {/* Experience quick edit link */}
+      <div style={styles.expRow}>
+        <small style={{ color: '#6B7280' }}>
+          Total experience recorded: <strong>{totalMonths}</strong> month(s)
+          {expLoading ? ' …loading' : ''}
+        </small>
+        {userId && (
+          <button
+            onClick={() => setShowExpForm(v => !v)}
+            style={{
+              padding: '6px 10px',
+              background: '#F3F4F6',
+              border: '1px solid #E5E7EB',
+              borderRadius: 8,
+              fontSize: 12,
+              cursor: 'pointer'
+            }}
+          >
+            {showExpForm ? 'Hide' : 'Add or edit experience'}
+          </button>
+        )}
+      </div>
+      {showExpForm && userId && (
+        <ExperienceForm userId={userId} language={language} onSaved={loadExperience} />
+      )}
+
+      {/* Progress bar */}
+      <section style={{ margin: '20px 0' }}>
+        <label style={{ display: 'block', marginBottom: 8 }}>
+          <strong>{ui.progress[language] || ui.progress.en}</strong>
+        </label>
+        <div style={styles.progressBarOuter}>
+          <div style={styles.progressBarInner(p)} />
+        </div>
+        <div style={{ fontSize: 12, color: '#444', marginTop: 6 }}>{p}%</div>
+        {progress?.nextPrompt && (
+          <div style={{ fontSize: 13, color: '#333', marginTop: 6 }}>{progress.nextPrompt}</div>
+        )}
+      </section>
+
+      {/* Next steps / flight path */}
+      <section style={{ marginTop: 24 }}>
+        <h3 style={{ marginBottom: 8 }}>{ui.nextSteps[language] || ui.nextSteps.en}</h3>
+        <ol style={{ paddingInlineStart: language === 'ar' ? 24 : 32 }}>
+          {flightPath.map((s, idx) => (
+            <li key={idx} style={{ marginBottom: 12 }}>
+              <div><strong>{s.title}</strong></div>
+              <div style={{ color: '#555' }}>{s.why}</div>
+              <div style={{ color: '#333' }}>{s.next}</div>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      {/* Role suggestions (cards) */}
+      <section style={styles.roleGroup}>
+        <h3 style={{ marginBottom: 8 }}>{ui.suggestedRoles[language] || ui.suggestedRoles.en}</h3>
+
+        {/* Ready now cards */}
+        {ready.length > 0 && (
+          <>
+            <h4 style={{ color: '#16a34a', margin: '8px 0' }}>
+              {ui.readyHeading[language] || ui.readyHeading.en}
+            </h4>
+            {ready.map((r) => (
+              <RoleCard key={`ready-${r.title}`} item={r} variant="ready" />
+            ))}
+          </>
+        )}
+
+        {/* Bridge role cards */}
+        {bridges.length > 0 && (
+          <>
+            <h4 style={{ color: '#a16207', margin: '14px 0 8px' }}>
+              {ui.bridgeHeading[language] || ui.bridgeHeading.en}
+            </h4>
+            {bridges.map((r) => (
+              <RoleCard key={`bridge-${r.title}`} item={r} variant="bridge" />
+            ))}
+          </>
+        )}
+
+        {ready.length === 0 && bridges.length === 0 && <p>No suggestions yet.</p>}
+      </section>
+
+      {/* Reflection / nudge (already localized by API) */}
+      {reflection && (
+        <section style={{ marginTop: 24, paddingTop: 8, borderTop: '1px solid #eee' }}>
+          <p style={{ color: '#444' }}>{reflection}</p>
+        </section>
+      )}
+    </main>
+  );
+}
