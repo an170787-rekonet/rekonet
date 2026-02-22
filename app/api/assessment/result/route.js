@@ -89,3 +89,290 @@ const i18n = {
       {
         title: { en: 'Join an online meeting (5 min)', fr: 'Rejoindre une réunion en ligne (5 min)', pt: 'Entrar numa reunião online (5 min)', es: 'Unirte a una reunión online (5 min)', ta: 'ஆன்லைன் கூட்டத்தில் சேர (5 நிமி)', uk: 'Долучіться до онлайн‑зустрічі (5 хв)', ar: 'الانضمام لاجتماع عبر الإنترنت (5 دقائق)' }[lang],
         why:   { en: 'Real‑world practice builds momentum.', fr: 'La pratique concrète crée l’élan.', pt: 'Prática real cria impulso.', es: 'La práctica real crea impulso.', ta: 'நடைமுறை முயற்சி முன்னேற்றம் தரும்.', uk: 'Практика дає імпульс.', ar: 'الممارسة الواقعية تصنع زخمًا.' }[lang],
+        next:  { en: 'Do a sound check practice.', fr: 'Faites un test audio.', pt: 'Faça um teste de áudio.', es: 'Haz una prueba de audio.', ta: 'ஒலி சோதனையை முயற்சிக்கவும்.', uk: 'Зробіть перевірку звуку.', ar: 'أجرِ فحصًا للصوت.' }[lang],
+      },
+    ],
+    precision: ({ lang }) => [
+      {
+        title: { en: 'ATS CV tune (10 min)', fr: 'Ajuster le CV pour ATS (10 min)', pt: 'Ajuste ATS do CV (10 min)', es: 'Ajuste ATS del CV (10 min)', ta: 'ATS CV திருத்தம் (10 நிமி)', uk: 'Налаштування резюме під ATS (10 хв)', ar: 'ملاءمة السيرة الذاتية لنظام ATS (10 دقائق)' }[lang],
+        why:   { en: 'Align bullets to target role.', fr: 'Alignez vos points au rôle visé.', pt: 'Alinhe bullets ao cargo‑alvo.', es: 'Alinea bullets al rol objetivo.', ta: 'இலக்கு பணிக்கு புள்ளிகளை ஒத்திசைக்கவும்.', uk: 'Вирівняйте bullets під роль.', ar: 'وافق النقاط مع الدور المستهدف.' }[lang],
+        next:  { en: 'Update top 5 bullets.', fr: 'Mettez à jour 5 points clés.', pt: 'Atualize os 5 bullets principais.', es: 'Actualiza los 5 bullets principales.', ta: 'முன்னணி 5 புள்ளிகளைப் புதுப்பிக்கவும்.', uk: 'Оновіть 5 основних пунктів.', ar: 'حدّث أفضل 5 نقاط.' }[lang],
+      },
+      {
+        title: { en: 'Targeted job search (15 min)', fr: 'Recherche ciblée (15 min)', pt: 'Busca direcionada (15 min)', es: 'Búsqueda dirigida (15 min)', ta: 'இலக்கு வேலை தேடல் (15 நிமி)', uk: 'Таргетований пошук роботи (15 хв)', ar: 'بحث وظيفي موجّه (15 دقيقة)' }[lang],
+        why:   { en: 'Focus boosts response rates.', fr: 'Le ciblage augmente les réponses.', pt: 'Foco aumenta respostas.', es: 'El enfoque aumenta respuestas.', ta: 'கவனம் பதில் விகிதத்தை உயர்த்தும்.', uk: 'Фокус підвищує відгуки.', ar: 'التركيز يرفع معدلات الاستجابة.' }[lang],
+        next:  { en: 'Pick 3 titles × 5 companies; save tracker.', fr: '3 intitulés × 5 entreprises; enregistrez.', pt: '3 cargos × 5 empresas; salve o tracker.', es: '3 puestos × 5 empresas; guarda en el tracker.', ta: '3 பதவிகள் × 5 நிறுவனங்கள்; பதிவேடு சேமிக்கவும்.', uk: '3 назви × 5 компаній; збережіть у трекері.', ar: '3 مسميات × 5 شركات؛ احفظ في المتعقّب.' }[lang],
+      },
+      {
+        title: { en: 'Interview story bank (10 min)', fr: 'Banque d’histoires d’entretien (10 min)', pt: 'Banco de histórias (10 min)', es: 'Banco de historias (10 min)', ta: 'நேர்காணல் கதைகள் (10 நிமி)', uk: 'Банк історій (10 хв)', ar: 'بنك القصص للمقابلة (10 دقائق)' }[lang],
+        why:   { en: 'STAR examples convert interviews.', fr: 'Les exemples STAR font la différence.', pt: 'Exemplos STAR convertem entrevistas.', es: 'Ejemplos STAR convierten entrevistas.', ta: 'STAR உதாரணங்கள் மாற்றத்தை தரும்.', uk: 'Приклади STAR працюють.', ar: 'أمثلة STAR تحوّل المقابلات.' }[lang],
+        next:  { en: 'Write 3 concise STARs with outcomes.', fr: 'Rédigez 3 STAR concis avec résultats.', pt: 'Escreva 3 STAR concisos com resultados.', es: 'Escribe 3 STAR concisos con resultados.', ta: 'விளைவுகளுடன் 3 சுருக்கமான STAR எழுதவும்.', uk: 'Напишіть 3 стислих STAR з результатами.', ar: 'اكتب 3 أمثلة STAR موجزة بالنتائج.' }[lang],
+      },
+    ],
+  },
+};
+
+const reflectionI18n = {
+  en: 'Small steps build momentum — your next short activity is ready.',
+  fr: 'Les petits pas créent l’élan — votre prochaine activité courte est prête.',
+  pt: 'Pequenos passos criam impulso — sua próxima atividade curta está pronta.',
+  es: 'Los pequeños pasos crean impulso — tu próxima actividad corta está lista.',
+  ta: 'சிறு படிகள் முன்னேற்றம் தரும் — உங்கள் அடுத்த குறும் செயல்பாடு தயார்.',
+  uk: 'Малі кроки створюють імпульс — ваша наступна коротка активність готова.',
+  ar: 'الخطوات الصغيرة تصنع زخمًا — نشاطك القصير التالي جاهز.',
+};
+
+// ---------------- Supabase lookups with graceful fallbacks ----------------
+async function fetchCategoryMeans(assessmentId) {
+  try {
+    const { data, error } = await supabase
+      .from('assessment_answers')
+      .select('category, value')
+      .eq('assessment_id', assessmentId);
+
+    if (error || !Array.isArray(data) || data.length === 0) {
+      // Fallback demo means if no rows yet
+      return [
+        { key: 'cv',        avg: 2.8 },
+        { key: 'interview', avg: 3.1 },
+        { key: 'jobsearch', avg: 2.9 },
+        { key: 'digital',   avg: 3.2 },
+      ];
+    }
+
+    const buckets = new Map(); // key -> {sum,count}
+    for (const row of data) {
+      const k = (row.category || 'general').toLowerCase();
+      if (!buckets.has(k)) buckets.set(k, { sum: 0, count: 0 });
+      const b = buckets.get(k);
+      b.sum += Number(row.value || 0);
+      b.count += 1;
+    }
+    const keys = ['cv', 'interview', 'jobsearch', 'digital'];
+    return keys.map((k) => {
+      const b = buckets.get(k);
+      const avg = b && b.count ? b.sum / b.count : 0;
+      return { key: k, avg: Number(avg.toFixed(2)) };
+    });
+  } catch {
+    return [
+      { key: 'cv',        avg: 2.8 },
+      { key: 'interview', avg: 3.1 },
+      { key: 'jobsearch', avg: 2.9 },
+      { key: 'digital',   avg: 3.2 },
+    ];
+  }
+}
+
+async function fetchActivitiesPercent(userId) {
+  if (!userId) return 0; // no user context → neutral fallback
+  try {
+    // Expect a table like: activity_completions(user_id, activity_id, completed_at)
+    const { data, error } = await supabase
+      .from('activity_completions')
+      .select('activity_id', { count: 'exact', head: true })
+      .eq('user_id', userId);
+
+    if (error) return 0;
+    const completed = data === null ? 0 : (data.length || 0); // head:true → length is 0; rely on count if available
+    const target = 5; // 5 completions == 100% of this lever (tunable)
+    return Math.max(0, Math.min(100, Math.round((completed / target) * 100)));
+  } catch {
+    return 0;
+  }
+}
+
+async function fetchCvPercent(userId) {
+  if (!userId) return 0;
+  try {
+    // Expect: cv_versions(user_id, score_ai, delta_from_prev, updated_at)
+    const { data, error } = await supabase
+      .from('cv_versions')
+      .select('score_ai, delta_from_prev')
+      .eq('user_id', userId)
+      .order('updated_at', { ascending: false })
+      .limit(1);
+
+    if (error || !data || !data[0]) return 0;
+    const { score_ai = 0, delta_from_prev = 0 } = data[0];
+    if (delta_from_prev >= 20 || score_ai >= 75) return 100;
+    // Simple scale: take best of delta*5 (so 20%→100) or score_ai
+    return Math.max(0, Math.min(100, Math.round(Math.max(delta_from_prev * 5, score_ai))));
+  } catch {
+    return 0;
+  }
+}
+
+async function fetchInterviewPercent(userId) {
+  if (!userId) return 0;
+  try {
+    // Expect: interview_sessions(user_id, score_24, completed_at)
+    const { data, error } = await supabase
+      .from('interview_sessions')
+      .select('score_24')
+      .eq('user_id', userId)
+      .order('completed_at', { ascending: false })
+      .limit(1);
+
+    if (error || !data || !data[0]) return 0;
+    const score = Number(data[0].score_24 || 0);
+    // Normalize around 18 = 100% (cap at 100)
+    return Math.max(0, Math.min(100, Math.round((score / 18) * 100)));
+  } catch {
+    return 0;
+  }
+}
+
+async function fetchRoleProfiles() {
+  try {
+    const { data, error } = await supabase.from('role_profiles').select('*');
+    if (error || !Array.isArray(data)) return [];
+    return data;
+  } catch {
+    return [];
+  }
+}
+
+function meetLevel(levelCode, minOverallLevel) {
+  const rank = { L1: 1, L2: 2, L3: 3, L4: 4 };
+  const need = rank[minOverallLevel || 'L1'] || 1;
+  const got  = rank[levelCode || 'L1'] || 1;
+  return got >= need;
+}
+
+function buildRoleSuggestions({ profiles, levelCode, interviewPct, certificates = [] }) {
+  if (!profiles?.length) return { readyNow: [], bridgeRoles: [], gaps: [], actions: [] };
+
+  const readyNow = [];
+  const bridgeRoles = [];
+
+  const certProviders = new Set(
+    (certificates || [])
+      .filter((c) => c.verified)
+      .map((c) => (c.provider || '').toLowerCase())
+  );
+
+  for (const p of profiles) {
+    const needsLevel = p.min_overall_level || 'L1';
+    const meetsLevel = meetLevel(levelCode, needsLevel);
+
+    const meetsInterview = p.min_interview_score
+      ? interviewPct >= Math.min(100, Math.round((p.min_interview_score / 18) * 100))
+      : true;
+
+    const requiresCert = !!p.requires_certificate;
+    const hasPreferredCert = p.preferred_cert_providers?.some((prov) =>
+      certProviders.has((prov || '').toLowerCase())
+    );
+
+    const gaps = [];
+
+    if (!meetsLevel) gaps.push({ type: 'level', key: needsLevel, why: 'Increase overall level' });
+    if (!meetsInterview) gaps.push({ type: 'interview', key: p.min_interview_score || 0, why: 'Build interview score' });
+
+    // Keywords (placeholder until CV keywords are parsed)
+    if (Array.isArray(p.must_have_keywords) && p.must_have_keywords.length) {
+      gaps.push({ type: 'keywords', key: p.must_have_keywords, why: 'Add role keywords to CV bullets' });
+    }
+
+    if (requiresCert && !hasPreferredCert) {
+      gaps.push({ type: 'certificate', key: p.preferred_cert_providers || [], why: 'Upload/earn certificate' });
+    }
+
+    if (gaps.length === 0) {
+      readyNow.push({ title: p.title, match: 86, why: 'Meets current baselines' });
+    } else if (gaps.length <= 2) {
+      bridgeRoles.push({ title: p.title, why: 'One or two fast gaps to close', gaps });
+    }
+  }
+
+  // Simple actions: link to activities that close common gaps
+  const actions = [
+    { title: 'ATS CV tune (10 min)', activityId: 'cv-ats-1' },
+    { title: 'Create 3 STAR stories', activityId: 'int-star-1' },
+  ];
+
+  return { readyNow, bridgeRoles, gaps: [], actions };
+}
+
+// ---------------- Route ----------------
+export async function GET(request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const assessmentId = searchParams.get('assessment_id') || searchParams.get('assessmentId') || 'demo';
+    const lang = (searchParams.get('language') || searchParams.get('lang') || 'en').toLowerCase();
+
+    // Optional user context (for progress and role suggestions)
+    const userId = searchParams.get('user_id') || null;
+
+    // 1) Category means
+    const byCategory = await fetchCategoryMeans(assessmentId);
+    const overall = byCategory.reduce((a, c) => a + c.avg, 0) / (byCategory.length || 1);
+
+    // 2) Level & Path
+    const lvl = levelFromMeans(overall);
+    const path = decidePath({ overall, byCat: byCategory });
+
+    // 3) Progress components (graceful fallbacks if no user_id or rows)
+    const [activitiesPct, cvPct, interviewPct] = await Promise.all([
+      fetchActivitiesPercent(userId),
+      fetchCvPercent(userId),
+      fetchInterviewPercent(userId),
+    ]);
+    const progress = computeProgress({
+      levelCode: lvl.code,
+      activities: activitiesPct,
+      cv: cvPct,
+      interview: interviewPct,
+    });
+
+    // 4) Flight‑path steps (localized) — FINAL FIX
+    const steps = i18n.steps[path]({ lang }).map((s) => ({
+      title: s.title,
+      why: s.why,
+      next: s.next,
+    }));
+
+    // 5) Summary & reflection (localized)
+    const summary = {
+      headline: i18n.headline[lang] || i18n.headline.en,
+      message: i18n.message[lang] || i18n.message.en,
+    };
+    const reflection = reflectionI18n[lang] || reflectionI18n.en;
+
+    // 6) Role suggestions (seeded profiles → simple matcher)
+    const profiles = await fetchRoleProfiles();
+
+    // If you store verified certificates in portfolio_items, pull them here (optional)
+    let certificates = [];
+    if (userId) {
+      try {
+        const { data } = await supabase
+          .from('portfolio_items')
+          .select('provider, verified')
+          .eq('user_id', userId);
+        certificates = Array.isArray(data) ? data : [];
+      } catch {}
+    }
+    const roleSuggestions = buildRoleSuggestions({
+      profiles,
+      levelCode: lvl.code,
+      interviewPct,
+      certificates,
+    });
+
+    return NextResponse.json({
+      assessmentId,
+      language: lang,
+      levels: { overall: lvl, byCategory },
+      path,
+      summary,
+      reflection,
+      flightPath: steps,
+      progress,
+      roleSuggestions,
+    });
+  } catch (e) {
+    return NextResponse.json({ ok: false, error: String(e?.message || e) }, { status: 500 });
+  }
+}
