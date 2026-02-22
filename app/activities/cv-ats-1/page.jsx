@@ -60,6 +60,9 @@ export default function CvAtsActivityPage() {
             placeholder="paste your user_id"
             style={{ width: '100%', padding: 8, marginTop: 6 }}
           />
+          <div style={{ fontSize: 12, color: '#666', marginTop: 6 }}>
+            Tip: copy it from your Results URL (?user_id=…).
+          </div>
         </div>
       )}
 
@@ -80,6 +83,12 @@ export default function CvAtsActivityPage() {
       </button>
 
       {status.msg && <p style={{ marginTop: 10 }}>{status.msg}</p>}
+
+      <div style={{ marginTop: 16 }}>
+        <a href={returnUrl} style={{ color: '#2563EB', textDecoration: 'none' }}>
+          ← Back to your results
+        </a>
+      </div>
     </main>
   );
 }
