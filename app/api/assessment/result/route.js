@@ -96,3 +96,7 @@ const i18n = {
       {
         title: { en: 'ATS CV tune (10 min)', fr: 'Ajuster le CV pour ATS (10 min)', pt: 'Ajuste ATS do CV (10 min)', es: 'Ajuste ATS del CV (10 min)', ta: 'ATS CV திருத்தம் (10 நிமி)', uk: 'Налаштування резюме під ATS (10 хв)', ar: 'ملاءمة السيرة الذاتية لنظام ATS (10 دقائق)' }[lang],
         why:   { en: 'Align bullets to target role.', fr: 'Alignez vos points au rôle visé.', pt: 'Alinhe bullets ao cargo‑alvo.', es: 'Alinea bullets al rol objetivo.', ta: 'இலக்கு பணிக்கு புள்ளிகளை ஒத்திசைக்கவும்.', uk: 'Вирівняйте bullets під роль.', ar: 'وافق النقاط مع الدور المستهدف.' }[lang],
+        next:  { en: 'Update top 5 bullets.', fr: 'Mettez à jour 5 points clés.', pt: 'Atualize os 5 bullets principais.', es: 'Actualiza los 5 bullets principales.', ta: 'முன்னணி 5 புள்ளிகளைப் புதுப்பிக்கவும்.', uk: 'Оновіть 5 основних пунктів.', ar: 'حدّث أفضل 5 نقاط.' }[lang],
+      },
+      {
+        title: { en: 'Targeted job search (15 min)', fr: 'Recherche ciblée (15 min)', pt: 'Busca direcionada (15 min)', es: 'Búsqueda dirigida (15 min)', ta: 'இலக்கு வேலை தேடல் (15 நிமி)', uk: 'Таргетований пошук роботи (15 хв)', ar: 'بحث وظيفي موجّه (15 دقيقة)' }[lang],
