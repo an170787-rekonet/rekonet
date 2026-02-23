@@ -14,11 +14,14 @@ export default function AvailabilityCard({
   const isRTL = language === "ar";
 
   // ---------- Local state (pre-filled from `value`) ----------
-  const [days, setDays] = useState(["mon","tue","wed"]); // sensible default
+  const [days, setDays] = useState(["mon","tue","wed"]);
   const [times, setTimes] = useState({ morning: false, afternoon: false, evening: true });
   const [contract, setContract] = useState("full_time");
   const [maxTravel, setMaxTravel] = useState(30);
   const [earliest, setEarliest] = useState(""); // yyyy-mm-dd for <input type="date">
+
+  // NEW: success banner
+  const [savedOk, setSavedOk] = useState(false);
 
   // when parent loads/changes value → hydrate UI
   useEffect(() => {
@@ -36,6 +39,13 @@ export default function AvailabilityCard({
     if (value.earliest_start) setEarliest(toInputDate(value.earliest_start));
   }, [value]);
 
+  // Clear success after a short delay
+  useEffect(() => {
+    if (!savedOk) return;
+    const t = setTimeout(() => setSavedOk(false), 3000);
+    return () => clearTimeout(t);
+  }, [savedOk]);
+
   // ---------- Labels ----------
   const L = useMemo(
     () => ({
@@ -47,6 +57,7 @@ export default function AvailabilityCard({
       earliest: { en: "Earliest start date", ar: "أقرب تاريخ بدء" },
       save: { en: "Save availability", ar: "حفظ التوفر" },
       saving: { en: "Saving…", ar: "جارٍ الحفظ…" },
+      saved: { en: "Saved", ar: "تم الحفظ" },
       mon: { en: "MON", ar: "الإثنين" },
       tue: { en: "TUE", ar: "الثلاثاء" },
       wed: { en: "WED", ar: "الأربعاء" },
@@ -67,7 +78,6 @@ export default function AvailabilityCard({
 
   // ---------- Helpers ----------
   function normalizeDays(arr) {
-    // Accept ["MON","Tue","wed"] or ["mon","tue"] → normalize to lowercase mon..sun
     const map = {
       mon: "mon", tue: "tue", wed: "wed", thu: "thu", fri: "fri", sat: "sat", sun: "sun",
       monday: "mon", tuesday: "tue", wednesday: "wed", thursday: "thu", friday: "fri", saturday: "sat", sunday: "sun",
@@ -82,7 +92,6 @@ export default function AvailabilityCard({
   }
 
   function toInputDate(v) {
-    // Accept "2026-02-23" or Date-like → return "YYYY-MM-DD"
     try {
       if (!v) return "";
       const d = new Date(v);
@@ -110,13 +119,19 @@ export default function AvailabilityCard({
 
   async function handleSave() {
     if (!onSave) return;
-    await onSave({
+    const payload = {
       days,
       times,
       contract,
       max_travel_mins: Number(maxTravel) || 0,
-      earliest_start: earliest || null, // already yyyy-mm-dd
-    });
+      earliest_start: earliest || null,
+    };
+    try {
+      await onSave(payload);
+      setSavedOk(true); // show success
+    } catch {
+      // parent already sets `error`; nothing to do here
+    }
   }
 
   // ---------- Render ----------
@@ -250,9 +265,13 @@ export default function AvailabilityCard({
             </div>
           </div>
 
-          {/* Error line */}
+          {/* Messages */}
           {error ? (
             <div style={{ color: "#b91c1c", marginTop: 8, fontSize: 12 }}>{error}</div>
+          ) : savedOk ? (
+            <div style={{ color: "#166534", background: "#DCFCE7", border: "1px solid #86efac", padding: "6px 8px", borderRadius: 6, marginTop: 8, fontSize: 12 }}>
+              {L.saved[language]}
+            </div>
           ) : null}
 
           {/* Save */}
