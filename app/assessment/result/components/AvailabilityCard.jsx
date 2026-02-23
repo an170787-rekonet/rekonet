@@ -1,196 +1,281 @@
+// app/assessment/result/components/AvailabilityCard.jsx
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-export default function AvailabilityCard({ language = "en", onSave }) {
+export default function AvailabilityCard({
+  language = "en",
+  value,           // { days: [], times: {...}, contract, max_travel_mins, earliest_start }
+  loading = false,
+  saving = false,
+  error = "",
+  onSave,          // function(payload)
+}) {
   const isRTL = language === "ar";
 
-  const [days, setDays] = useState({
-    mon: false, tue: false, wed: false,
-    thu: false, fri: false, sat: false, sun: false
-  });
-
-  const [times, setTimes] = useState({
-    morning: false, afternoon: false, evening: false
-  });
-
+  // ---------- Local state (pre-filled from `value`) ----------
+  const [days, setDays] = useState(["mon","tue","wed"]); // sensible default
+  const [times, setTimes] = useState({ morning: false, afternoon: false, evening: true });
   const [contract, setContract] = useState("full_time");
-  const [travel, setTravel] = useState(30);
-  const [startDate, setStartDate] = useState("");
+  const [maxTravel, setMaxTravel] = useState(30);
+  const [earliest, setEarliest] = useState(""); // yyyy-mm-dd for <input type="date">
 
-  // NEW: UX feedback
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState("");
-
-  const L = {
-    heading: { en: "Availability", ar: "التوفر" },
-    days: { en: "Days you can work", ar: "الأيام المتاحة للعمل" },
-    times: { en: "Times you can work", ar: "الأوقات المتاحة للعمل" },
-    contract: { en: "Contract preference", ar: "نوع العقد المفضل" },
-    travel: { en: "Max travel time (minutes)", ar: "الحد الأقصى لوقت التنقل (بالدقائق)" },
-    start: { en: "Earliest start date", ar: "أقرب تاريخ للبدء" },
-    save: { en: "Save availability", ar: "حفظ التوفر" },
-    saved: { en: "Saved.", ar: "تم الحفظ." },
-    error: { en: "Could not save.", ar: "تعذر الحفظ." },
-    ft: { en: "Full‑time", ar: "دوام كامل" },
-    pt: { en: "Part‑time", ar: "دوام جزئي" },
-    wk: { en: "Weekends only", ar: "عطلة نهاية الأسبوع فقط" },
-    any: { en: "Flexible / any", ar: "مرن / أي وقت" }
-  };
-
-  const toggleDay = (d) => setDays({ ...days, [d]: !days[d] });
-  const toggleTime = (t) => setTimes({ ...times, [t]: !times[t] });
-
-  const save = async () => {
-    try {
-      setBusy(true);
-      setMsg("");
-      // Build payload
-      const payload = {
-        days,
-        times,
-        contract,
-        travelMinutes: Number(travel),
-        earliestStart: startDate
-      };
-      // Await parent onSave (this calls your API)
-      await onSave?.(payload);
-      setMsg(L.saved[language]);
-      // Hide the message after a short delay
-      setTimeout(() => setMsg(""), 3000);
-    } catch (e) {
-      console.error(e);
-      setMsg(L.error[language]);
-    } finally {
-      setBusy(false);
+  // when parent loads/changes value → hydrate UI
+  useEffect(() => {
+    if (!value) return;
+    if (Array.isArray(value.days)) setDays(normalizeDays(value.days));
+    if (value.times && typeof value.times === "object") {
+      setTimes({
+        morning: !!value.times.morning,
+        afternoon: !!value.times.afternoon,
+        evening: !!value.times.evening,
+      });
     }
-  };
+    if (value.contract) setContract(value.contract);
+    if (typeof value.max_travel_mins === "number") setMaxTravel(value.max_travel_mins);
+    if (value.earliest_start) setEarliest(toInputDate(value.earliest_start));
+  }, [value]);
 
-  const chip = {
-    padding: "6px 10px",
-    border: "1px solid #ddd",
-    borderRadius: 8,
-    cursor: "pointer",
-    background: "#f9fafb",
-    fontSize: 12,
-    margin: 4
-  };
+  // ---------- Labels ----------
+  const L = useMemo(
+    () => ({
+      title: { en: "Availability", ar: "التوفر" },
+      daysYouCanWork: { en: "Days you can work", ar: "الأيام المتاحة" },
+      timesYouCanWork: { en: "Times you can work", ar: "الأوقات المتاحة" },
+      contractPref: { en: "Contract preference", ar: "نوع العقد المفضل" },
+      travel: { en: "Max travel time (minutes)", ar: "الحد الأقصى لوقت التنقل (دقائق)" },
+      earliest: { en: "Earliest start date", ar: "أقرب تاريخ بدء" },
+      save: { en: "Save availability", ar: "حفظ التوفر" },
+      saving: { en: "Saving…", ar: "جارٍ الحفظ…" },
+      mon: { en: "MON", ar: "الإثنين" },
+      tue: { en: "TUE", ar: "الثلاثاء" },
+      wed: { en: "WED", ar: "الأربعاء" },
+      thu: { en: "THU", ar: "الخميس" },
+      fri: { en: "FRI", ar: "الجمعة" },
+      sat: { en: "SAT", ar: "السبت" },
+      sun: { en: "SUN", ar: "الأحد" },
+      morning: { en: "morning", ar: "الصباح" },
+      afternoon: { en: "afternoon", ar: "بعد الظهر" },
+      evening: { en: "evening", ar: "المساء" },
+      full_time: { en: "Full-time", ar: "دوام كامل" },
+      part_time: { en: "Part-time", ar: "دوام جزئي" },
+      weekends: { en: "Weekends", ar: "عطلات نهاية الأسبوع" },
+      any: { en: "Any / flexible", ar: "أي / مرن" },
+    }),
+    [language]
+  );
 
+  // ---------- Helpers ----------
+  function normalizeDays(arr) {
+    // Accept ["MON","Tue","wed"] or ["mon","tue"] → normalize to lowercase mon..sun
+    const map = {
+      mon: "mon", tue: "tue", wed: "wed", thu: "thu", fri: "fri", sat: "sat", sun: "sun",
+      monday: "mon", tuesday: "tue", wednesday: "wed", thursday: "thu", friday: "fri", saturday: "sat", sunday: "sun",
+      MON: "mon", TUE: "tue", WED: "wed", THU: "thu", FRI: "fri", SAT: "sat", SUN: "sun",
+    };
+    const out = [];
+    for (const d of arr) {
+      const k = String(d || "").trim().toLowerCase();
+      if (map[k] && !out.includes(map[k])) out.push(map[k]);
+    }
+    return out.length ? out : ["mon","tue","wed"];
+  }
+
+  function toInputDate(v) {
+    // Accept "2026-02-23" or Date-like → return "YYYY-MM-DD"
+    try {
+      if (!v) return "";
+      const d = new Date(v);
+      if (Number.isNaN(d.getTime())) return "";
+      const y = d.getUTCFullYear();
+      const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+      const dd = String(d.getUTCDate()).padStart(2, "0");
+      return `${y}-${m}-${dd}`;
+    } catch {
+      return "";
+    }
+  }
+
+  const allDayKeys = ["mon","tue","wed","thu","fri","sat","sun"];
+  const dayLabel = (k) => L[k]?.[language] || k.toUpperCase();
+  const dir = isRTL ? "rtl" : "ltr";
+
+  // ---------- UI handlers ----------
+  function toggleDay(k) {
+    setDays((prev) => (prev.includes(k) ? prev.filter((x) => x !== k) : [...prev, k]));
+  }
+  function toggleTime(k) {
+    setTimes((prev) => ({ ...prev, [k]: !prev[k] }));
+  }
+
+  async function handleSave() {
+    if (!onSave) return;
+    await onSave({
+      days,
+      times,
+      contract,
+      max_travel_mins: Number(maxTravel) || 0,
+      earliest_start: earliest || null, // already yyyy-mm-dd
+    });
+  }
+
+  // ---------- Render ----------
   return (
     <section
-      dir={isRTL ? "rtl" : "ltr"}
+      dir={dir}
       style={{
-        border: "1px solid #eee",
+        marginTop: 12,
+        border: "1px solid #e5e7eb",
         borderRadius: 8,
+        background: "#fff",
         padding: 12,
-        marginTop: 16,
-        background: "#fff"
       }}
     >
-      <h3 style={{ marginTop: 0 }}>{L.heading[language]}</h3>
+      <div style={{ fontWeight: 700, marginBottom: 8 }}>
+        {L.title[language]}
+      </div>
 
-      {/* DAYS */}
-      <div style={{ marginTop: 8 }}>
-        <strong>{L.days[language]}</strong>
-        <div style={{ marginTop: 6, display: "flex", flexWrap: "wrap" }}>
-          {Object.keys(days).map((d) => (
-            <div
-              key={d}
-              onClick={() => toggleDay(d)}
+      {/* Loading state */}
+      {loading ? (
+        <div style={{ color: "#6b7280" }}>Loading…</div>
+      ) : (
+        <>
+          {/* Days row */}
+          <div style={{ marginTop: 6 }}>
+            <div style={{ fontSize: 12, color: "#374151", marginBottom: 6 }}>
+              {L.daysYouCanWork[language]}
+            </div>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {allDayKeys.map((k) => {
+                const active = days.includes(k);
+                return (
+                  <button
+                    key={k}
+                    type="button"
+                    onClick={() => toggleDay(k)}
+                    style={{
+                      padding: "6px 10px",
+                      borderRadius: 999,
+                      border: "1px solid #E5E7EB",
+                      background: active ? "#111827" : "#F3F4F6",
+                      color: active ? "#fff" : "#1F2937",
+                      fontWeight: 600,
+                      fontSize: 12,
+                      cursor: "pointer",
+                    }}
+                  >
+                    {dayLabel(k)}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Times row */}
+          <div style={{ marginTop: 12 }}>
+            <div style={{ fontSize: 12, color: "#374151", marginBottom: 6 }}>
+              {L.timesYouCanWork[language]}
+            </div>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {(["morning", "afternoon", "evening"]).map((t) => {
+                const active = !!times[t];
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => toggleTime(t)}
+                    style={{
+                      padding: "6px 10px",
+                      borderRadius: 999,
+                      border: "1px solid #E5E7EB",
+                      background: active ? "#111827" : "#F3F4F6",
+                      color: active ? "#fff" : "#1F2937",
+                      fontWeight: 600,
+                      fontSize: 12,
+                      cursor: "pointer",
+                      textTransform: "capitalize",
+                    }}
+                  >
+                    {L[t][language]}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Contract + travel + date */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginTop: 12 }}>
+            {/* Contract */}
+            <div>
+              <div style={{ fontSize: 12, color: "#374151", marginBottom: 6 }}>
+                {L.contractPref[language]}
+              </div>
+              <select
+                value={contract}
+                onChange={(e) => setContract(e.target.value)}
+                style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 6 }}
+              >
+                <option value="full_time">{L.full_time[language]}</option>
+                <option value="part_time">{L.part_time[language]}</option>
+                <option value="weekends">{L.weekends[language]}</option>
+                <option value="any">{L.any[language]}</option>
+              </select>
+            </div>
+
+            {/* Travel */}
+            <div>
+              <div style={{ fontSize: 12, color: "#374151", marginBottom: 6 }}>
+                {L.travel[language]}
+              </div>
+              <input
+                type="number"
+                min={0}
+                value={maxTravel}
+                onChange={(e) => setMaxTravel(e.target.value)}
+                style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 6 }}
+              />
+            </div>
+
+            {/* Earliest start */}
+            <div>
+              <div style={{ fontSize: 12, color: "#374151", marginBottom: 6 }}>
+                {L.earliest[language]}
+              </div>
+              <input
+                type="date"
+                value={earliest || ""}
+                onChange={(e) => setEarliest(e.target.value)}
+                style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 6 }}
+              />
+            </div>
+          </div>
+
+          {/* Error line */}
+          {error ? (
+            <div style={{ color: "#b91c1c", marginTop: 8, fontSize: 12 }}>{error}</div>
+          ) : null}
+
+          {/* Save */}
+          <div style={{ marginTop: 10 }}>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving}
               style={{
-                ...chip,
-                background: days[d] ? "#e0f2fe" : "#f9fafb"
+                padding: "8px 12px",
+                background: "#2563EB",
+                color: "#fff",
+                border: "none",
+                borderRadius: 8,
+                fontWeight: 700,
+                cursor: saving ? "not-allowed" : "pointer",
+                opacity: saving ? 0.75 : 1,
               }}
             >
-              {d.toUpperCase()}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* TIMES */}
-      <div style={{ marginTop: 12 }}>
-        <strong>{L.times[language]}</strong>
-        <div style={{ marginTop: 6, display: "flex", flexWrap: "wrap" }}>
-          {Object.keys(times).map((t) => (
-            <div
-              key={t}
-              onClick={() => toggleTime(t)}
-              style={{
-                ...chip,
-                background: times[t] ? "#fee2e2" : "#f9fafb"
-              }}
-            >
-              {t}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* CONTRACT */}
-      <div style={{ marginTop: 12 }}>
-        <strong>{L.contract[language]}</strong>
-        <select
-          value={contract}
-          onChange={(e) => setContract(e.target.value)}
-          style={{ display: "block", marginTop: 6, padding: 8 }}
-        >
-          <option value="full_time">{L.ft[language]}</option>
-          <option value="part_time">{L.pt[language]}</option>
-          <option value="weekends">{L.wk[language]}</option>
-          <option value="any">{L.any[language]}</option>
-        </select>
-      </div>
-
-      {/* TRAVEL */}
-      <div style={{ marginTop: 12 }}>
-        <strong>{L.travel[language]}</strong>
-        <input
-          type="number"
-          value={travel}
-          onChange={(e) => setTravel(e.target.value)}
-          style={{ marginTop: 6, padding: 8, width: 120 }}
-        />
-      </div>
-
-      {/* START DATE */}
-      <div style={{ marginTop: 12 }}>
-        <strong>{L.start[language]}</strong>
-        <input
-          type="date"
-          value={startDate}
-          onChange={(e) => setStartDate(e.target.value)}
-          style={{ marginTop: 6, padding: 8 }}
-        />
-      </div>
-
-      <button
-        onClick={save}
-        disabled={busy}
-        style={{
-          marginTop: 16,
-          padding: "8px 12px",
-          background: busy ? "#9CA3AF" : "#2563EB",
-          color: "#fff",
-          borderRadius: 8,
-          border: "none",
-          fontWeight: 600,
-          cursor: busy ? "not-allowed" : "pointer"
-        }}
-      >
-        {busy ? (language === "ar" ? "جارٍ الحفظ…" : "Saving…") : L.save[language]}
-      </button>
-
-      {msg && (
-        <div
-          style={{
-            marginTop: 8,
-            fontSize: 12,
-            color: msg === L.saved[language] ? "#166534" : "#B91C1C"
-          }}
-        >
-          {msg}
-        </div>
+              {saving ? L.saving[language] : L.save[language]}
+            </button>
+          </div>
+        </>
       )}
     </section>
   );
