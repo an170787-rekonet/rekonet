@@ -172,8 +172,67 @@ function monthsToStage(totalMonths) {
   return 'Seasoned';
 }
 
+/* ---------------------------------------------------------
+   Availability-aware scoring helpers (PR‑5B)
+---------------------------------------------------------- */
+const PT_WORDS = ['part-time', 'part time', 'pt'];
+const WEEKEND_WORDS = ['weekend', 'saturday', 'sunday', 'weekends'];
+const EVENING_WORDS = ['evening', 'late', 'night', 'twilight', 'pm shift', 'night shift'];
+const MORNING_WORDS = ['morning', 'am shift', 'early'];
+const AFTERNOON_WORDS = ['afternoon', 'pm', 'day shift'];
+
+function stringHitsAny(s = '', words = []) {
+  const t = String(s).toLowerCase();
+  return words.some(w => t.includes(w));
+}
+
+function availabilityBoostForTitle(roleTitle = '', availability) {
+  if (!availability) return 0;
+  const t = (roleTitle || '').toLowerCase();
+  let score = 0;
+
+  // Contract
+  const c = (availability.contract || '').toLowerCase();
+  if (c === 'part_time' && stringHitsAny(t, PT_WORDS)) score += 1.5;
+  if (c === 'weekends' && stringHitsAny(t, WEEKEND_WORDS)) score += 1.25;
+  // 'any' and 'full_time' do not add boosts; keep neutral (0)
+
+  // Times
+  const times = availability.times || {};
+  if (times.evening && stringHitsAny(t, EVENING_WORDS)) score += 1.0;
+  if (times.morning && stringHitsAny(t, MORNING_WORDS)) score += 0.75;
+  if (times.afternoon && stringHitsAny(t, AFTERNOON_WORDS)) score += 0.75;
+
+  return score; // small additive boost that gently raises matching roles
+}
+
+function availabilityWhy(availability, language = 'en') {
+  if (!availability) return '';
+  const parts = [];
+
+  const c = (availability.contract || '').toLowerCase();
+  if (c === 'part_time') parts.push(language === 'ar' ? 'دوام جزئي' : 'part‑time');
+  else if (c === 'weekends') parts.push(language === 'ar' ? 'عطلات نهاية الأسبوع' : 'weekends');
+  else if (c === 'full_time') parts.push(language === 'ar' ? 'دوام كامل' : 'full‑time');
+  else if (c === 'any') parts.push(language === 'ar' ? 'مرن' : 'flexible');
+
+  const t = availability.times || {};
+  const tLabels = [];
+  if (t.morning) tLabels.push(language === 'ar' ? 'الصباح' : 'morning');
+  if (t.afternoon) tLabels.push(language === 'ar' ? 'بعد الظهر' : 'afternoon');
+  if (t.evening) tLabels.push(language === 'ar' ? 'المساء' : 'evening');
+
+  if (tLabels.length) parts.push(tLabels.join(language === 'ar' ? ' و' : ' & '));
+
+  if (parts.length === 0) return '';
+  return language === 'ar'
+    ? `متوافق مع توافرك (${parts.join('، ')}).`
+    : `Matches your availability (${parts.join(', ')}).`;
+}
+
 // Blend API role suggestions with CV/goal/experience signals (light heuristic)
-function enhanceRoles({ readyNow = [], bridgeRoles = [], cvTopKeywords = [], experienceStage = 'New', goalTitle = '' }) {
+// PR‑5B: pass `availability` to gently favour matching roles.
+function enhanceRoles({ readyNow = [], bridgeRoles = [], cvTopKeywords = [], experienceStage = 'New', goalTitle = '', availability = null }) {
   const kwSet = new Set((cvTopKeywords || []).map((k) => String(k).toLowerCase()));
   const levelBoost = experienceStage === 'Seasoned' ? 2 : experienceStage === 'Solid' ? 1.5 : experienceStage === 'Growing' ? 1.25 : 1;
 
@@ -194,7 +253,10 @@ function enhanceRoles({ readyNow = [], bridgeRoles = [], cvTopKeywords = [], exp
       if (gaps.includes(kw)) score += 0.5;
     }
 
-    // slight level boost
+    // PR‑5B: Availability boost (gentle, additive)
+    score += availabilityBoostForTitle(title, availability);
+
+    // slight level boost (keep last so it scales the total a bit)
     score *= levelBoost;
 
     return score;
@@ -221,7 +283,7 @@ export default function ResultView({ assessmentId, language, userId = null }) {
   const [goalPlan, setGoalPlan] = useState(null);
   const [city, setCity] = useState('');
 
-  // Availability (PR‑5A)
+  // Availability (PR‑5A + used by PR‑5B)
   const [availability, setAvailability] = useState(null);
   const [loadingAvail, setLoadingAvail] = useState(true);
   const [savingAvail, setSavingAvail] = useState(false);
@@ -360,13 +422,14 @@ export default function ResultView({ assessmentId, language, userId = null }) {
   const { summary, reflection, flightPath = [], progress, roleSuggestions = {}, path } = data || {};
   const p = progress?.value ?? 0;
 
-  // Enhanced roles (Option B) blended with signals
+  // PR‑5B: availability-aware enhanced roles
   const { ready: rolesReady, bridges: rolesBridge } = enhanceRoles({
     readyNow: roleSuggestions.readyNow,
     bridgeRoles: roleSuggestions.bridgeRoles,
     cvTopKeywords: cvSummary?.topKeywords || [],
     experienceStage,
     goalTitle: goalPlan?.goal || '',
+    availability, // <— NEW
   });
 
   const styles = {
@@ -391,6 +454,9 @@ export default function ResultView({ assessmentId, language, userId = null }) {
 
   /* ---------- Role card ---------- */
   function RoleCard({ item, variant }) {
+    const availLine = availabilityWhy(availability, language);
+    const titleHitsPT = availability ? availabilityBoostForTitle(item.title, availability) > 0 : false;
+
     return (
       <article style={styles.card}>
         <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
@@ -413,7 +479,19 @@ export default function ResultView({ assessmentId, language, userId = null }) {
 
         {item.why && <p style={{ color: '#444', margin: '8px 0 4px' }}>{item.why}</p>}
 
-        {/* Live Job Links for this role */}
+        {/* PR‑5B: Availability-aware hint */}
+        {availLine && (
+          <p style={{ color: '#475569', margin: '4px 0 8px', fontSize: 13 }}>
+            {titleHitsPT
+              ? (language === 'ar'
+                  ? 'يميل هذا الدور إلى التوافق مع توافرك. '
+                  : 'This role tends to match your availability. ')
+              : ''}
+            {availLine}
+          </p>
+        )}
+
+        {/* Live Job Links for this role (already availability-aware) */}
         <LiveJobsLinks
           goal={item.title}
           level={experienceStage}
@@ -453,7 +531,7 @@ export default function ResultView({ assessmentId, language, userId = null }) {
         experienceStage={experienceStage}
       />
 
-      {/* CV Insights */}
+      {/* CV Insights (has upload/paste UI) */}
       <CvInsights userId={userId} language={language} />
 
       {/* Availability Card (PR‑5A) */}
@@ -534,7 +612,7 @@ export default function ResultView({ assessmentId, language, userId = null }) {
             )}
           </div>
 
-          {/* Live jobs for goal */}
+          {/* Live jobs for goal (already availability-aware) */}
           <LiveJobsLinks
             goal={goalPlan.goal}
             level={experienceStage}
@@ -604,7 +682,7 @@ export default function ResultView({ assessmentId, language, userId = null }) {
         </ol>
       </section>
 
-      {/* Enhanced Suggested Roles (Option B) */}
+      {/* Enhanced Suggested Roles (availability-aware) */}
       <section style={{ marginTop: 24 }}>
         <h3 style={{ marginBottom: 8 }}>{ui.suggestedRoles[language] || ui.suggestedRoles.en}</h3>
 
