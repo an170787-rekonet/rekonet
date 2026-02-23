@@ -1,6 +1,8 @@
 // app/assessment/result/components/LiveJobsLinks.jsx
 "use client";
 
+import React, { useState, useMemo } from "react";
+
 // We use plain <a> for external links to avoid Next.js client-side routing side-effects.
 
 const UK_POSTCODE_REGEX =
@@ -99,15 +101,13 @@ function availabilitySummary(availability, lang) {
 function indeedJobTypeParam(availability) {
   const c = (availability?.contract || "").toLowerCase();
   if (c === "part_time") return "parttime";
-  // extendable: fulltime, temporary, contract, internship
   return null;
 }
 
 /**
- * Build outbound search links for Indeed UK, company careers via Google operators,
- * and a general Google Jobs-leaning search, with radius & freshness controls.
+ * Build the Indeed UK link and a user-facing suggestion string.
  */
-function buildSearchQueries({ goal, level, city, keywords = [], availability, radiusMiles, freshnessDays }) {
+function buildIndeed({ goal, level, city, keywords = [], availability, radiusMiles, freshnessDays }) {
   const title = (goal || "").trim();
   const place = (city || "").trim();
 
@@ -117,21 +117,10 @@ function buildSearchQueries({ goal, level, city, keywords = [], availability, ra
   const avail = availabilityTerms(availability);
 
   const titleQuoted = title ? `"${title}"` : "";
+  const suggestionParts = [titleQuoted, ...syns, ...skills, ...lvlPos, ...lvlNeg, ...avail].filter(Boolean);
+  const suggestionText = suggestionParts.join(" ").replace(/\s+/g, " ").trim();
 
-  // ----- Indeed UK (co.uk) -----
-  const indeedParts = [
-    titleQuoted,
-    ...syns,
-    ...skills,
-    ...lvlPos,
-    ...lvlNeg,
-    ...avail,
-  ].filter(Boolean);
-
-  const indeedQ = encodeURIComponent(
-    (indeedParts.length ? indeedParts : [titleQuoted]).join(" ").trim()
-  );
-
+  const indeedQ = encodeURIComponent(suggestionText);
   const l = place ? encodeURIComponent(place) : "";
   const jt = indeedJobTypeParam(availability);
 
@@ -153,47 +142,7 @@ function buildSearchQueries({ goal, level, city, keywords = [], availability, ra
     .join("&");
 
   const indeedHref = `${indeedBase}?${params}`;
-
-  // ----- Careers via Google operators -----
-  const careersOps = [
-    "site:workdayjobs.com",
-    "site:greenhouse.io",
-    "site:lever.co",
-  ].join(" OR ");
-
-  const careersTerms = [
-    careersOps,
-    titleQuoted,
-    place ? `"${place}"` : "",
-    ...skills,
-    ...avail,
-    ...lvlNeg,
-  ]
-    .filter(Boolean)
-    .join(" ");
-
-  const careersHref = `https://www.google.com/search?q=${encodeURIComponent(
-    careersTerms
-  )}`;
-
-  // ----- General Google Jobs-leaning search -----
-  const googleTerms = [
-    titleQuoted,
-    place ? `"${place}"` : "",
-    ...syns.slice(0, 2),
-    ...skills,
-    ...avail,
-    ...lvlNeg,
-    "(job OR jobs)",
-  ]
-    .filter(Boolean)
-    .join(" ");
-
-  const googleHref = `https://www.google.com/search?q=${encodeURIComponent(
-    googleTerms
-  )}`;
-
-  return { indeedHref, careersHref, googleHref };
+  return { indeedHref, suggestionText };
 }
 
 export default function LiveJobsLinks({
@@ -206,29 +155,31 @@ export default function LiveJobsLinks({
 }) {
   const dir = language === "ar" ? "rtl" : "ltr";
 
-  // ---- Chips state: initialise from postcode logic & sensible defaults ----
+  // Chips state
   const initialRadius = pickInitialRadius(city);
   const [radius, setRadius] = useState(initialRadius);    // 0 / 5 / 10 / 25
   const [freshness, setFreshness] = useState(7);          // 1 / 3 / 7 / 14
 
-  // ---- Build links with current selections ----
-  const { indeedHref, careersHref, googleHref } = buildSearchQueries({
-    goal,
-    level,
-    city,
-    keywords,
-    availability,
-    radiusMiles: radius,
-    freshnessDays: freshness,
-  });
+  // Build Indeed link + suggestion
+  const { indeedHref, suggestionText } = useMemo(
+    () =>
+      buildIndeed({
+        goal,
+        level,
+        city,
+        keywords,
+        availability,
+        radiusMiles: radius,
+        freshnessDays: freshness,
+      }),
+    [goal, level, city, keywords, availability, radius, freshness]
+  );
 
   const L =
     {
       en: {
         heading: "Find live jobs",
         indeed: "Indeed (UK)",
-        careers: "Company career pages",
-        google: "Google (jobs)",
         radius: "Radius",
         freshness: "Freshness",
         rExact: "Exact",
@@ -240,12 +191,13 @@ export default function LiveJobsLinks({
         d7: "7d",
         d14: "14d",
         avail: "Availability",
+        suggestion: "Suggested search",
+        copy: "Copy",
+        copied: "Copied!",
       },
       ar: {
         heading: "اعثر على وظائف مباشرة",
         indeed: "بحث Indeed (المملكة المتحدة)",
-        careers: "صفحات وظائف الشركات",
-        google: "بحث Google (وظائف)",
         radius: "المسافة",
         freshness: "الحداثة",
         rExact: "دقيق",
@@ -257,13 +209,14 @@ export default function LiveJobsLinks({
         d7: "7 أيام",
         d14: "14 يومًا",
         avail: "التوفر",
+        suggestion: "البحث المقترح",
+        copy: "نسخ",
+        copied: "تم النسخ!",
       },
     }[language] ||
     {
       heading: "Find live jobs",
       indeed: "Indeed (UK)",
-      careers: "Company career pages",
-      google: "Google (jobs)",
       radius: "Radius",
       freshness: "Freshness",
       rExact: "Exact",
@@ -275,9 +228,21 @@ export default function LiveJobsLinks({
       d7: "7d",
       d14: "14d",
       avail: "Availability",
+      suggestion: "Suggested search",
+      copy: "Copy",
+      copied: "Copied!",
     };
 
   const availText = availabilitySummary(availability, language);
+  const [copied, setCopied] = useState(false);
+
+  async function doCopy() {
+    try {
+      await navigator.clipboard.writeText(suggestionText || "");
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {}
+  }
 
   return (
     <div
@@ -320,7 +285,54 @@ export default function LiveJobsLinks({
         ) : null}
       </div>
 
-      {/* Links row */}
+      {/* Suggested search + button */}
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          alignItems: "center",
+          gap: 8,
+          marginBottom: 8,
+        }}
+      >
+        <span style={{ fontSize: 12, color: "#475569", minWidth: 110 }}>{L.suggestion}:</span>
+        <div
+          style={{
+            flex: 1,
+            minWidth: 220,
+            padding: "6px 10px",
+            border: "1px solid #E5E7EB",
+            borderRadius: 6,
+            background: "#F8FAFC",
+            fontSize: 12,
+            color: "#111827",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+          title={suggestionText}
+        >
+          {suggestionText || "—"}
+        </div>
+        <button
+          type="button"
+          onClick={doCopy}
+          style={{
+            padding: "6px 10px",
+            borderRadius: 6,
+            border: "1px solid #E5E7EB",
+            background: copied ? "#DCFCE7" : "#F3F4F6",
+            color: "#1F2937",
+            fontWeight: 600,
+            fontSize: 12,
+            cursor: "pointer",
+          }}
+        >
+          {copied ? L.copied : L.copy}
+        </button>
+      </div>
+
+      {/* Link row (Indeed only) */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
         <a
           href={indeedHref}
@@ -329,22 +341,6 @@ export default function LiveJobsLinks({
           style={chipStyle("#F3F4F6")}
         >
           {L.indeed}
-        </a>
-        <a
-          href={careersHref}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={chipStyle("#E5F2FF")}
-        >
-          {L.careers}
-        </a>
-        <a
-          href={googleHref}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={chipStyle("#F1F5F9")}
-        >
-          {L.google}
         </a>
       </div>
     </div>
@@ -366,6 +362,3 @@ function chipStyle(bg) {
     fontWeight: 600,
   };
 }
-
-// Minimal React import because we're in a client component
-import React, { useState } from "react";
