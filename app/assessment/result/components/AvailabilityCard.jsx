@@ -20,10 +20,10 @@ export default function AvailabilityCard({
   const [maxTravel, setMaxTravel] = useState(30);
   const [earliest, setEarliest] = useState(""); // yyyy-mm-dd for <input type="date">
 
-  // NEW: success banner
+  // ✅ Success banner state (auto-clears after 3s)
   const [savedOk, setSavedOk] = useState(false);
 
-  // when parent loads/changes value → hydrate UI
+  // Hydrate when parent provides/changes `value`
   useEffect(() => {
     if (!value) return;
     if (Array.isArray(value.days)) setDays(normalizeDays(value.days));
@@ -39,7 +39,7 @@ export default function AvailabilityCard({
     if (value.earliest_start) setEarliest(toInputDate(value.earliest_start));
   }, [value]);
 
-  // Clear success after a short delay
+  // Auto-hide success after 3 seconds
   useEffect(() => {
     if (!savedOk) return;
     const t = setTimeout(() => setSavedOk(false), 3000);
@@ -78,6 +78,7 @@ export default function AvailabilityCard({
 
   // ---------- Helpers ----------
   function normalizeDays(arr) {
+    // Accept variations like ["MON","Tue","wednesday"] → normalize to ["mon","tue","wed"]
     const map = {
       mon: "mon", tue: "tue", wed: "wed", thu: "thu", fri: "fri", sat: "sat", sun: "sun",
       monday: "mon", tuesday: "tue", wednesday: "wed", thursday: "thu", friday: "fri", saturday: "sat", sunday: "sun",
@@ -127,10 +128,10 @@ export default function AvailabilityCard({
       earliest_start: earliest || null,
     };
     try {
-      await onSave(payload);
-      setSavedOk(true); // show success
+      await onSave(payload);   // parent handles PUT and error state
+      setSavedOk(true);        // show success banner
     } catch {
-      // parent already sets `error`; nothing to do here
+      // parent sets `error`; nothing to do here
     }
   }
 
