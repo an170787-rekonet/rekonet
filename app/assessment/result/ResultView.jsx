@@ -624,11 +624,13 @@ export default function ResultView({ assessmentId, language, userId = null }) {
           </div>
         </section>
       ) : (
-        // If no goal chosen yet, show a gentle hint
-        <div style={{ marginTop: 8, color: '#6b7280' }}>
-          {goalL.chooseHint[language] || goalL.chooseHint.en}
-        </div>
-      )}
+  <>
+    {/* If no goal chosen yet, show a gentle hint */}
+    <div style={{ marginTop: 8, color: '#6b7280' }}>
+      {goalL.chooseHint[language] || goalL.chooseHint.en}
+    </div>
+  </>
+)}
 
       {/* Experience quick edit link */}
       <div style={styles.expRow}>
