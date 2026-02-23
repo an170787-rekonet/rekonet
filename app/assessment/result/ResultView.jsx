@@ -1,3 +1,4 @@
+// app/assessment/result/ResultView.jsx
 'use client';
 
 import { useEffect, useMemo, useState, useCallback } from 'react';
@@ -162,7 +163,7 @@ function Chip({ href, children, lang = 'en' }) {
 }
 
 /* ---------------------------------------------------------
-   Helpers
+   Helpers for experience level
 ---------------------------------------------------------- */
 function monthsToStage(totalMonths) {
   if (!Number.isFinite(totalMonths) || totalMonths <= 0) return 'New';
@@ -173,13 +174,20 @@ function monthsToStage(totalMonths) {
 }
 
 /* ---------------------------------------------------------
-   Availability-aware scoring helpers (PR‑5B)
+   PR‑6: Availability & travel‑aware scoring helpers
 ---------------------------------------------------------- */
-const PT_WORDS = ['part-time', 'part time', 'pt'];
-const WEEKEND_WORDS = ['weekend', 'saturday', 'sunday', 'weekends'];
-const EVENING_WORDS = ['evening', 'late', 'night', 'twilight', 'pm shift', 'night shift'];
-const MORNING_WORDS = ['morning', 'am shift', 'early'];
-const AFTERNOON_WORDS = ['afternoon', 'pm', 'day shift'];
+const UK_POSTCODE_REGEX = /\b([A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}|GIR ?0AA)\b/i;
+const IN_PERSON_WORDS = [
+  'assistant','advisor','associate','reception','front of house','warehouse','retail','store',
+  'customer service','call centre','contact centre','team member','host','server','barista','care assistant'
+];
+const REMOTE_WORDS = ['remote','work from home','hybrid'];
+
+const PT_WORDS = ['part-time','part time','pt'];
+const WEEKEND_WORDS = ['weekend','saturday','sunday','weekends'];
+const EVENING_WORDS = ['evening','late','night','twilight','pm shift','night shift'];
+const MORNING_WORDS = ['morning','am shift','early'];
+const AFTERNOON_WORDS = ['afternoon','pm','day shift'];
 
 function stringHitsAny(s = '', words = []) {
   const t = String(s).toLowerCase();
@@ -193,17 +201,30 @@ function availabilityBoostForTitle(roleTitle = '', availability) {
 
   // Contract
   const c = (availability.contract || '').toLowerCase();
-  if (c === 'part_time' && stringHitsAny(t, PT_WORDS)) score += 1.5;
-  if (c === 'weekends' && stringHitsAny(t, WEEKEND_WORDS)) score += 1.25;
-  // 'any' and 'full_time' do not add boosts; keep neutral (0)
+  if (c === 'part_time' && stringHitsAny(t, PT_WORDS)) score += 1.0;
+  if (c === 'weekends' && stringHitsAny(t, WEEKEND_WORDS)) score += 0.75;
+  // 'any' and 'full_time' → neutral
 
   // Times
   const times = availability.times || {};
-  if (times.evening && stringHitsAny(t, EVENING_WORDS)) score += 1.0;
-  if (times.morning && stringHitsAny(t, MORNING_WORDS)) score += 0.75;
-  if (times.afternoon && stringHitsAny(t, AFTERNOON_WORDS)) score += 0.75;
+  if (times.evening && stringHitsAny(t, EVENING_WORDS)) score += 0.6;
+  if (times.morning && stringHitsAny(t, MORNING_WORDS)) score += 0.45;
+  if (times.afternoon && stringHitsAny(t, AFTERNOON_WORDS)) score += 0.45;
 
-  return score; // small additive boost that gently raises matching roles
+  return score; // additive, small
+}
+
+function proximityBoostForTitle(roleTitle = '', place = '', availability) {
+  // Gentle boost for likely in‑person titles when user entered a UK postcode and keeps travel small (≤30 mins)
+  if (!place || !UK_POSTCODE_REGEX.test(place)) return 0;
+  const max = Number(availability?.max_travel_mins ?? 0);
+  if (!Number.isFinite(max) || max <= 0 || max > 30) return 0;
+
+  const t = (roleTitle || '').toLowerCase();
+  let s = 0;
+  if (stringHitsAny(t, IN_PERSON_WORDS)) s += 0.35;  // slight lift for in‑person roles
+  if (stringHitsAny(t, REMOTE_WORDS))     s -= 0.15; // if explicitly remote, reduce a touch
+  return s;
 }
 
 function availabilityWhy(availability, language = 'en') {
@@ -218,9 +239,9 @@ function availabilityWhy(availability, language = 'en') {
 
   const t = availability.times || {};
   const tLabels = [];
-  if (t.morning) tLabels.push(language === 'ar' ? 'الصباح' : 'morning');
-  if (t.afternoon) tLabels.push(language === 'ar' ? 'بعد الظهر' : 'afternoon');
-  if (t.evening) tLabels.push(language === 'ar' ? 'المساء' : 'evening');
+  if (t.morning)   tLabels.push(language === 'ar' ? 'الصباح'     : 'morning');
+  if (t.afternoon) tLabels.push(language === 'ar' ? 'بعد الظهر'  : 'afternoon');
+  if (t.evening)   tLabels.push(language === 'ar' ? 'المساء'     : 'evening');
 
   if (tLabels.length) parts.push(tLabels.join(language === 'ar' ? ' و' : ' & '));
 
@@ -230,43 +251,71 @@ function availabilityWhy(availability, language = 'en') {
     : `Matches your availability (${parts.join(', ')}).`;
 }
 
-// Blend API role suggestions with CV/goal/experience signals (light heuristic)
-// PR‑5B: pass `availability` to gently favour matching roles.
-function enhanceRoles({ readyNow = [], bridgeRoles = [], cvTopKeywords = [], experienceStage = 'New', goalTitle = '', availability = null }) {
+/* ---------------------------------------------------------
+   PR‑6: Enhanced role ranking (availability + proximity)
+   – with CV keyword cap to avoid over‑boosting
+---------------------------------------------------------- */
+function enhanceRoles({
+  readyNow = [],
+  bridgeRoles = [],
+  cvTopKeywords = [],
+  experienceStage = 'New',
+  goalTitle = '',
+  availability = null,
+  place = '',
+}) {
   const kwSet = new Set((cvTopKeywords || []).map((k) => String(k).toLowerCase()));
   const levelBoost = experienceStage === 'Seasoned' ? 2 : experienceStage === 'Solid' ? 1.5 : experienceStage === 'Growing' ? 1.25 : 1;
 
-  function scoreRole(role) {
-    const title = (role?.title || '').toLowerCase();
-    let score = 0;
+  function keywordScore(title, why, gaps) {
+    // Rebalanced weights + cap to avoid over‑boosting
+    // title: 1.2, why: 0.8, gaps: 0.4  → cap total KW to 2.5
+    const t = String(title || '').toLowerCase();
+    const w = String(why || '').toLowerCase();
+    const g = JSON.stringify(gaps || []).toLowerCase();
 
-    // match by title tokens vs goal & keywords
-    if (goalTitle && title.includes(String(goalTitle).toLowerCase())) score += 2;
-
-    // keyword overlaps inside "why" / gaps / title
-    const why = String(role?.why || '').toLowerCase();
-    const gaps = JSON.stringify(role?.gaps || []).toLowerCase();
+    let sum = 0;
     for (const kw of kwSet) {
       if (!kw) continue;
-      if (title.includes(kw)) score += 1.5;
-      if (why.includes(kw)) score += 1;
-      if (gaps.includes(kw)) score += 0.5;
+      if (t.includes(kw)) sum += 1.2;
+      if (w.includes(kw)) sum += 0.8;
+      if (g.includes(kw)) sum += 0.4;
+      if (sum >= 2.5) break; // cap early
     }
-
-    // PR‑5B: Availability boost (gentle, additive)
-    score += availabilityBoostForTitle(title, availability);
-
-    // slight level boost (keep last so it scales the total a bit)
-    score *= levelBoost;
-
-    return score;
+    return Math.min(sum, 2.5);
   }
 
-  const ready = [...readyNow].map((r) => ({ ...r, _enhScore: scoreRole(r) }))
-    .sort((a, b) => b._enhScore - a._enhScore);
+  function scoreRole(role) {
+    const title = (role?.title || '').toLowerCase();
 
-  const bridges = [...bridgeRoles].map((r) => ({ ...r, _enhScore: scoreRole(r) }))
-    .sort((a, b) => b._enhScore - a._enhScore);
+    // Base: goal alignment
+    let score = 0;
+    if (goalTitle && title.includes(String(goalTitle).toLowerCase())) score += 2;
+
+    // CV keyword overlaps (capped)
+    const kw = keywordScore(role?.title, role?.why, role?.gaps);
+    score += kw;
+
+    // PR‑6 additions
+    const availB = availabilityBoostForTitle(role?.title, availability);            // availability
+    const proxB  = proximityBoostForTitle(role?.title, place, availability);        // travel proximity
+    score += availB + proxB;
+
+    // level as the final multiplier
+    score *= levelBoost;
+
+    return { score, availB, proxB, kw };
+  }
+
+  const ready = [...readyNow].map((r) => {
+    const s = scoreRole(r);
+    return { ...r, _enhScore: s.score, _availabilityBoost: s.availB, _proximityBoost: s.proxB, _kwScore: s.kw, _variant: 'ready' };
+  }).sort((a, b) => b._enhScore - a._enhScore);
+
+  const bridges = [...bridgeRoles].map((r) => {
+    const s = scoreRole(r);
+    return { ...r, _enhScore: s.score, _availabilityBoost: s.availB, _proximityBoost: s.proxB, _kwScore: s.kw, _variant: 'bridge' };
+  }).sort((a, b) => b._enhScore - a._enhScore);
 
   return { ready, bridges };
 }
@@ -283,7 +332,7 @@ export default function ResultView({ assessmentId, language, userId = null }) {
   const [goalPlan, setGoalPlan] = useState(null);
   const [city, setCity] = useState('');
 
-  // Availability (PR‑5A + used by PR‑5B)
+  // Availability (PR‑5A + used by PR‑5B/PR‑6)
   const [availability, setAvailability] = useState(null);
   const [loadingAvail, setLoadingAvail] = useState(true);
   const [savingAvail, setSavingAvail] = useState(false);
@@ -422,14 +471,15 @@ export default function ResultView({ assessmentId, language, userId = null }) {
   const { summary, reflection, flightPath = [], progress, roleSuggestions = {}, path } = data || {};
   const p = progress?.value ?? 0;
 
-  // PR‑5B: availability-aware enhanced roles
+  // PR‑6: availability + proximity‑aware enhanced roles
   const { ready: rolesReady, bridges: rolesBridge } = enhanceRoles({
     readyNow: roleSuggestions.readyNow,
     bridgeRoles: roleSuggestions.bridgeRoles,
     cvTopKeywords: cvSummary?.topKeywords || [],
     experienceStage,
     goalTitle: goalPlan?.goal || '',
-    availability, // <— NEW
+    availability,
+    place: city || '',
   });
 
   const styles = {
@@ -455,7 +505,13 @@ export default function ResultView({ assessmentId, language, userId = null }) {
   /* ---------- Role card ---------- */
   function RoleCard({ item, variant }) {
     const availLine = availabilityWhy(availability, language);
-    const titleHitsPT = availability ? availabilityBoostForTitle(item.title, availability) > 0 : false;
+    const boosted = ((item._availabilityBoost || 0) + (item._proximityBoost || 0)) > 0.2;
+
+    const clarifier = boosted && variant === 'bridge'
+      ? (language === 'ar'
+          ? 'دور الجسر يناسب توافرك ومسافة تنقلك.'
+          : 'Bridge role that fits your availability and travel.')
+      : '';
 
     return (
       <article style={styles.card}>
@@ -479,19 +535,14 @@ export default function ResultView({ assessmentId, language, userId = null }) {
 
         {item.why && <p style={{ color: '#444', margin: '8px 0 4px' }}>{item.why}</p>}
 
-        {/* PR‑5B: Availability-aware hint */}
-        {availLine && (
+        {/* PR‑6: Availability & proximity hints */}
+        {(availLine || clarifier) && (
           <p style={{ color: '#475569', margin: '4px 0 8px', fontSize: 13 }}>
-            {titleHitsPT
-              ? (language === 'ar'
-                  ? 'يميل هذا الدور إلى التوافق مع توافرك. '
-                  : 'This role tends to match your availability. ')
-              : ''}
-            {availLine}
+            {clarifier ? (clarifier + ' ') : ''}{availLine}
           </p>
         )}
 
-        {/* Live Job Links for this role (already availability-aware) */}
+        {/* Live Job Links for this role (already availability-aware; chips live in the component) */}
         <LiveJobsLinks
           goal={item.title}
           level={experienceStage}
@@ -531,10 +582,10 @@ export default function ResultView({ assessmentId, language, userId = null }) {
         experienceStage={experienceStage}
       />
 
-      {/* CV Insights (has upload/paste UI) */}
+      {/* CV Insights */}
       <CvInsights userId={userId} language={language} />
 
-      {/* Availability Card (PR‑5A) */}
+      {/* Availability Card */}
       <AvailabilityCard
         language={language}
         value={availability}
@@ -612,7 +663,7 @@ export default function ResultView({ assessmentId, language, userId = null }) {
             )}
           </div>
 
-          {/* Live jobs for goal (already availability-aware) */}
+          {/* Live jobs for goal */}
           <LiveJobsLinks
             goal={goalPlan.goal}
             level={experienceStage}
@@ -682,7 +733,7 @@ export default function ResultView({ assessmentId, language, userId = null }) {
         </ol>
       </section>
 
-      {/* Enhanced Suggested Roles (availability-aware) */}
+      {/* Enhanced Suggested Roles (availability + proximity aware) */}
       <section style={{ marginTop: 24 }}>
         <h3 style={{ marginBottom: 8 }}>{ui.suggestedRoles[language] || ui.suggestedRoles.en}</h3>
 
