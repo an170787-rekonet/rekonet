@@ -415,10 +415,22 @@ export default function ResultView({ assessmentId, language, userId = null }) {
       {/* Availability Card (PR‑5) */}
       <AvailabilityCard
         language={language}
-        onSave={(data) => {
-          setAvailability(data);
-          console.log('Availability saved:', data);
-        }}
+   onSave={async (data) => {
+    setAvailability(data);
+
+    // Save to Supabase via API
+    const res = await fetch("/api/availability/save", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        userId: userId,
+        availability: data
+      }),
+    });
+
+    const j = await res.json();
+    console.log("Saved availability to DB:", j);
+}}
       />
 
       {/* Goal selector */}
