@@ -8,7 +8,7 @@ import { supabase } from '../../../lib/supabaseClient';
 import CvInsights from './components/CvInsights';
 import MyGoalForm from './components/MyGoalForm';
 import LiveJobsLinks from './components/LiveJobsLinks';
-
+import AvailabilityCard from './components/AvailabilityCard';
 /* ---------------------------------------------------------
    Support band (Path + Experience + Readiness)
    – Bilingual + RTL
