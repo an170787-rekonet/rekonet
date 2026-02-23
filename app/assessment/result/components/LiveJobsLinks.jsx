@@ -3,53 +3,115 @@
 
 import Link from "next/link";
 
-/**
- * Build outbound search links for Indeed, company careers (via Google operators),
- * and general Google Jobs, enriched with availability signals (part-time, evening, weekend, flexible).
- * We only open searches in new tabs. No scraping.
- */
-function buildSearchQueries({ goal, level, city, keywords = [], availability }) {
-  const title = (goal || "").trim();
-  const place = (city || "").trim(); // may be a UK postcode like "SE1 2AA"
+// --- helpers ---
+const UK_POSTCODE_REGEX =
+  /\b([A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}|GIR ?0AA)\b/i;
 
-  // Seniority control
-  const lowLevel = ["new", "growing"].includes((level || "").toLowerCase());
-  const seniorFilter = lowLevel ? "-senior -lead -manager" : "";
+function pickRadius(place) {
+  if (!place) return null;
+  return UK_POSTCODE_REGEX.test(place) ? 0 : 10; // exact for postcodes, wider for towns
+}
 
-  // Keywords: keep top 3–5
-  const topKw = (keywords || []).slice(0, 5).join(" ");
+function levelTokens(level) {
+  const lv = (level || "").toLowerCase();
+  if (["new", "growing"].includes(lv)) {
+    return {
+      positives: ["junior", "trainee", "entry level"],
+      negatives: ["-senior", "-lead", "-manager"],
+    };
+  }
+  if (["established", "advancing"].includes(lv)) {
+    return { positives: ["experienced"], negatives: [] };
+  }
+  return { positives: [], negatives: [] };
+}
 
-  // Availability-derived terms
-  const availTerms = [];
+function roleSynonyms(title) {
+  const t = (title || "").toLowerCase();
+  const out = [];
+  if (t.includes("customer service")) {
+    out.push("customer support", "customer care", "contact centre", "call centre");
+  }
+  if (t.includes("advisor") || t.includes("agent")) {
+    out.push("agent", "advisor");
+  }
+  return out;
+}
+
+function availabilityTerms(availability) {
+  const terms = [];
   const contract = (availability?.contract || "").toLowerCase();
   const times = availability?.times || {};
 
-  if (contract === "part_time") availTerms.push("part time");
-  if (contract === "weekends") availTerms.push("weekend");
-  if (contract === "any") availTerms.push("flexible");
+  if (contract === "part_time") terms.push("part time");
+  if (contract === "weekends") terms.push("weekend");
+  if (contract === "any") terms.push("flexible");
 
-  if (times?.evening) availTerms.push("evening");
-  if (times?.morning) availTerms.push("morning");
-  if (times?.afternoon) availTerms.push("afternoon");
+  if (times?.evening) terms.push("evening");
+  if (times?.morning) terms.push("morning");
+  if (times?.afternoon) terms.push("afternoon");
+  return terms;
+}
 
-  const availText = availTerms.join(" ").trim();
+function indeedJobTypeParam(availability) {
+  const c = (availability?.contract || "").toLowerCase();
+  if (c === "part_time") return "parttime";
+  // extendable: fulltime, temporary, contract
+  return null;
+}
 
-  // ----- 1) Indeed UK search (fixes) -----
-  // - Use indeed.co.uk for UK relevance
-  // - Properly encode q and l
-  // - Use & (not &amp;)
-  // - radius=0 for postcode-precise results (adjust if you want a wider area)
-  const indeedQuery = encodeURIComponent(
-    [title, topKw, seniorFilter, availText].filter(Boolean).join(" ")
+/**
+ * Build outbound search links for Indeed UK, company careers via Google operators,
+ * and a general Google Jobs-leaning search, with stronger relevance.
+ */
+function buildSearchQueries({ goal, level, city, keywords = [], availability }) {
+  const title = (goal || "").trim();
+  const place = (city || "").trim();
+
+  // ---------- Tokens ----------
+  const { positives: lvlPos, negatives: lvlNeg } = levelTokens(level);
+  const syns = roleSynonyms(title);
+  const skills = (keywords || []).slice(0, 5);
+
+  const avail = availabilityTerms(availability);
+
+  // Title is quoted to prevent splitting in search engines
+  const titleQuoted = title ? `"${title}"` : "";
+
+  // ---------- Indeed UK ----------
+  const indeedParts = [
+    titleQuoted,
+    ...syns,
+    ...skills,
+    ...lvlPos,
+    ...lvlNeg,
+    ...avail,
+  ].filter(Boolean);
+
+  // If we somehow end up empty, keep at least the title
+  const indeedQ = encodeURIComponent(
+    (indeedParts.length ? indeedParts : [titleQuoted]).join(" ").trim()
   );
-  const indeedLoc = encodeURIComponent(place);
-  const indeedBase = "https://www.indeed.co.uk/jobs";
-  const indeedParams =
-    `?q=${indeedQuery}` +
-    (indeedLoc ? `&l=${indeedLoc}&radius=0` : "");
-  const indeedHref = `${indeedBase}${indeedParams}`;
 
-  // ----- 2) Company careers (Workday / Greenhouse / Lever) via Google operators -----
+  const radius = pickRadius(place);
+  const l = place ? encodeURIComponent(place) : "";
+
+  const jt = indeedJobTypeParam(availability);
+  // fresh + relevant
+  const params = [
+    `q=${indeedQ}`,
+    l ? `l=${l}` : null,
+    radius != null ? `radius=${radius}` : null,
+    "sort=date",
+    "fromage=7",
+    jt ? `jt=${jt}` : null,
+  ]
+    .filter(Boolean)
+    .join("&");
+
+  const indeedHref = `https://www.indeed.co.uk/jobs?${params}`;
+
+  // ---------- Careers via Google operators ----------
   const careersOps = [
     "site:workdayjobs.com",
     "site:greenhouse.io",
@@ -58,11 +120,11 @@ function buildSearchQueries({ goal, level, city, keywords = [], availability }) 
 
   const careersTerms = [
     careersOps,
-    title ? `"${title}"` : "",
+    titleQuoted,
     place ? `"${place}"` : "",
-    topKw,
-    availText,
-    seniorFilter,
+    ...skills,
+    ...avail,
+    ...lvlNeg,
   ]
     .filter(Boolean)
     .join(" ");
@@ -71,14 +133,15 @@ function buildSearchQueries({ goal, level, city, keywords = [], availability }) 
     careersTerms
   )}`;
 
-  // ----- 3) General Google Jobs -----
+  // ---------- General Google Jobs-leaning search ----------
   const googleTerms = [
-    title ? `"${title}"` : "",
+    titleQuoted,
     place ? `"${place}"` : "",
-    topKw,
-    availText,
-    seniorFilter,
-    "jobs",
+    ...syns.slice(0, 2), // keep it tight
+    ...skills,
+    ...avail,
+    ...lvlNeg,
+    "(job OR jobs)",
   ]
     .filter(Boolean)
     .join(" ");
@@ -96,7 +159,7 @@ export default function LiveJobsLinks({
   city,
   keywords = [],
   language = "en",
-  availability, // <-- NEW
+  availability,
 }) {
   const { indeedHref, careersHref, googleHref } = buildSearchQueries({
     goal,
@@ -112,20 +175,20 @@ export default function LiveJobsLinks({
         heading: "Find live jobs",
         indeed: "Indeed (UK)",
         careers: "Company career pages",
-        google: "Google Jobs",
+        google: "Google (jobs)",
       },
       ar: {
         heading: "اعثر على وظائف مباشرة",
         indeed: "بحث Indeed (المملكة المتحدة)",
         careers: "صفحات وظائف الشركات",
-        google: "وظائف Google",
+        google: "بحث Google (وظائف)",
       },
     }[language] ||
     {
       heading: "Find live jobs",
       indeed: "Indeed (UK)",
       careers: "Company career pages",
-      google: "Google Jobs",
+      google: "Google (jobs)",
     };
 
   const dir = language === "ar" ? "rtl" : "ltr";
