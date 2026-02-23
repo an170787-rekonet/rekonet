@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '../../../lib/supabaseClient';
 import CvInsights from "./components/CvInsights";
+import MyGoalForm from "./components/MyGoalForm";
+
 /* ---------------------------------------------------------
    Support band: Path stage + Experience + Readiness %
    - No “Level” language shown.
@@ -298,6 +300,9 @@ export default function ResultView({ assessmentId, language, userId = null }) {
   const [expLoading, setExpLoading] = useState(false);
   const [showExpForm, setShowExpForm] = useState(false);
 
+  // PR‑4: Goal plan (API response)
+  const [goalPlan, setGoalPlan] = useState(null);
+
   // ===== UI labels per language =====
   const ui = {
     progress: {
@@ -361,6 +366,15 @@ export default function ResultView({ assessmentId, language, userId = null }) {
         pt: 'Criar 3 histórias STAR', ta: '3 STAR கதைகள் உருவாக்கு', uk: 'Створіть 3 історії STAR', ar: 'أنشئ 3 قصص STAR',
       },
     },
+  };
+
+  // PR‑4: Simple bilingual labels for Goal panel
+  const goalL = {
+    panelTitle: { en: 'My goal — guidance', ar: 'هدفي — إرشادات' },
+    alreadyHave: { en: 'Already have', ar: 'متوفر لديك' },
+    gentlyMissing: { en: 'Gently missing', ar: 'قيد الإضافة' },
+    suggestions: { en: 'Suggested next actions', ar: 'الإجراءات المقترحة' },
+    chooseHint: { en: 'Choose a goal above to see guidance.', ar: 'اختر هدفًا بالأعلى لعرض الإرشادات.' }
   };
 
   // ===== Styles (inline) =====
@@ -540,7 +554,82 @@ export default function ResultView({ assessmentId, language, userId = null }) {
       />
 
       {/* CV Insights Panel */}
-<CvInsights userId={userId} language={language} />
+      <CvInsights userId={userId} language={language} />
+
+      {/* PR‑4: My Goal selector + results */}
+      <MyGoalForm
+        userId={userId}
+        language={language}
+        onResult={(data) => setGoalPlan(data)}
+      />
+
+      {/* Goal results panel */}
+      {goalPlan && goalPlan.ok ? (
+        <section
+          dir={language === 'ar' ? 'rtl' : 'ltr'}
+          style={{
+            marginTop: 12,
+            padding: 12,
+            border: '1px solid #e5e7eb',
+            borderRadius: 8,
+            background: '#fff'
+          }}
+        >
+          <h3 style={{ marginTop: 0 }}>
+            {(goalL.panelTitle[language] || goalL.panelTitle.en)} — {goalPlan.goal}
+          </h3>
+
+          {/* Already have */}
+          <div style={{ marginTop: 8 }}>
+            <strong>{goalL.alreadyHave[language] || goalL.alreadyHave.en}:</strong>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
+              {(goalPlan.alreadyHave || []).length > 0
+                ? goalPlan.alreadyHave.map((k) => (
+                    <span key={`have-${k}`} style={{ background: '#f1f5f9', padding: '4px 8px', borderRadius: 6 }}>
+                      {k}
+                    </span>
+                  ))
+                : <span style={{ color: '#6b7280' }}>—</span>}
+            </div>
+          </div>
+
+          {/* Gently missing */}
+          <div style={{ marginTop: 12 }}>
+            <strong>{goalL.gentlyMissing[language] || goalL.gentlyMissing.en}:</strong>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
+              {(goalPlan.gentlyMissing || []).length > 0
+                ? goalPlan.gentlyMissing.map((k) => (
+                    <span key={`miss-${k}`} style={{ background: '#fff7ed', padding: '4px 8px', borderRadius: 6 }}>
+                      {k}
+                    </span>
+                  ))
+                : <span style={{ color: '#6b7280' }}>—</span>}
+            </div>
+
+            {/* Simple suggested actions (route to your activities with params) */}
+            {(goalPlan.gentlyMissing || []).length > 0 && (
+              <div style={{ marginTop: 10 }}>
+                <div style={{ marginBottom: 6 }}>
+                  <strong>{goalL.suggestions[language] || goalL.suggestions.en}:</strong>
+                </div>
+                <div style={styles.chipsRow}>
+                  <Chip href={withParams('/activities/cv-ats-1')} lang={language}>
+                    {ui.actionLabels.atsTune[language] || ui.actionLabels.atsTune.en}
+                  </Chip>
+                  <Chip href={withParams('/activities/int-star-1')} lang={language}>
+                    {ui.actionLabels.star3[language] || ui.actionLabels.star3.en}
+                  </Chip>
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+      ) : (
+        // If no goal chosen yet, show a gentle hint
+        <div style={{ marginTop: 8, color: '#6b7280' }}>
+          {goalL.chooseHint[language] || goalL.chooseHint.en}
+        </div>
+      )}
 
       {/* Experience quick edit link */}
       <div style={styles.expRow}>
