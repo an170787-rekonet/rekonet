@@ -14,13 +14,13 @@ export default function AvailabilityCard({
   const isRTL = language === "ar";
 
   // ---------- Local state (pre-filled from `value`) ----------
-  const [days, setDays] = useState(["mon","tue","wed"]);
+  const [days, setDays] = useState(["mon", "tue", "wed"]);
   const [times, setTimes] = useState({ morning: false, afternoon: false, evening: true });
   const [contract, setContract] = useState("full_time");
   const [maxTravel, setMaxTravel] = useState(30);
   const [earliest, setEarliest] = useState(""); // yyyy-mm-dd for <input type="date">
 
-  // ✅ Success banner state (auto-clears after 3s)
+  // Success banner (auto-clears after 3s)
   const [savedOk, setSavedOk] = useState(false);
 
   // Hydrate when parent provides/changes `value`
@@ -89,7 +89,7 @@ export default function AvailabilityCard({
       const k = String(d || "").trim().toLowerCase();
       if (map[k] && !out.includes(map[k])) out.push(map[k]);
     }
-    return out.length ? out : ["mon","tue","wed"];
+    return out.length ? out : ["mon", "tue", "wed"];
   }
 
   function toInputDate(v) {
@@ -106,7 +106,7 @@ export default function AvailabilityCard({
     }
   }
 
-  const allDayKeys = ["mon","tue","wed","thu","fri","sat","sun"];
+  const allDayKeys = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
   const dayLabel = (k) => L[k]?.[language] || k.toUpperCase();
   const dir = isRTL ? "rtl" : "ltr";
 
@@ -193,7 +193,7 @@ export default function AvailabilityCard({
               {L.timesYouCanWork[language]}
             </div>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              {(["morning", "afternoon", "evening"]).map((t) => {
+              {["morning", "afternoon", "evening"].map((t) => {
                 const active = !!times[t];
                 return (
                   <button
@@ -220,15 +220,15 @@ export default function AvailabilityCard({
           </div>
 
           {/* Contract + travel + date */}
-   <div
-  style={{
-    display: "grid",
-    gridTemplateColumns: "1.2fr 1fr 0.8fr", // contract a bit wider, date a bit tighter
-    alignItems: "center",
-    gap: 12,
-    marginTop: 12,
-  }}
->
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1.2fr 1fr 0.8fr", // contract a bit wider, date a bit tighter
+              alignItems: "center",
+              gap: 12,
+              marginTop: 12,
+            }}
+          >
             {/* Contract */}
             <div>
               <div style={{ fontSize: 12, color: "#374151", marginBottom: 6 }}>
@@ -237,7 +237,14 @@ export default function AvailabilityCard({
               <select
                 value={contract}
                 onChange={(e) => setContract(e.target.value)}
-                style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 6 }}
+                style={{
+                  width: "100%",
+                  height: 38,
+                  padding: "8px 10px",
+                  border: "1px solid #ddd",
+                  borderRadius: 6,
+                  boxSizing: "border-box",
+                }}
               >
                 <option value="full_time">{L.full_time[language]}</option>
                 <option value="part_time">{L.part_time[language]}</option>
@@ -256,7 +263,16 @@ export default function AvailabilityCard({
                 min={0}
                 value={maxTravel}
                 onChange={(e) => setMaxTravel(e.target.value)}
-                style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 6 }}
+                style={{
+                  width: 140,
+                  minWidth: 120,
+                  maxWidth: 160,
+                  height: 38,                 // match select height
+                  padding: "8px 10px",
+                  border: "1px solid #ddd",
+                  borderRadius: 6,
+                  boxSizing: "border-box",
+                }}
               />
             </div>
 
@@ -265,22 +281,24 @@ export default function AvailabilityCard({
               <div style={{ fontSize: 12, color: "#374151", marginBottom: 6 }}>
                 {L.earliest[language]}
               </div>
-        <input
-  type="date"
-  value={earliest || ""}
-  onChange={(e) => setEarliest(e.target.value)}
-  style={{
-    width: 140,            // keeps the control inside the box
-    minWidth: 120,         // avoids shrinking too much
-    maxWidth: 180,         // avoids stretching past the cell
-    padding: 8,
-    border: "1px solid #ddd",
-    borderRadius: 6,
-    overflow: "hidden",    // hides any native control overflow
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap",
-  }}
-/>
+              <input
+                type="date"
+                value={earliest || ""}
+                onChange={(e) => setEarliest(e.target.value)}
+                style={{
+                  width: 160,
+                  minWidth: 140,
+                  maxWidth: 180,
+                  height: 38,                 // match select/number
+                  padding: "8px 10px",
+                  border: "1px solid #ddd",
+                  borderRadius: 6,
+                  boxSizing: "border-box",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              />
             </div>
           </div>
 
@@ -288,7 +306,17 @@ export default function AvailabilityCard({
           {error ? (
             <div style={{ color: "#b91c1c", marginTop: 8, fontSize: 12 }}>{error}</div>
           ) : savedOk ? (
-            <div style={{ color: "#166534", background: "#DCFCE7", border: "1px solid #86efac", padding: "6px 8px", borderRadius: 6, marginTop: 8, fontSize: 12 }}>
+            <div
+              style={{
+                color: "#166534",
+                background: "#DCFCE7",
+                border: "1px solid #86efac",
+                padding: "6px 8px",
+                borderRadius: 6,
+                marginTop: 8,
+                fontSize: 12,
+              }}
+            >
               {L.saved[language]}
             </div>
           ) : null}
