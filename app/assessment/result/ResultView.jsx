@@ -7,50 +7,35 @@ import CvInsights from "./components/CvInsights";
 import MyGoalForm from "./components/MyGoalForm";
 
 /* ---------------------------------------------------------
-   Support band: Path stage + Experience + Readiness %
-   - No “Level” language shown.
-   - RTL-safe for Arabic.
+   Support band component
 ---------------------------------------------------------- */
 function SupportBand({ lang = 'en', path, readiness, experienceStage }) {
   const isRTL = lang === 'ar';
   const r = Number(readiness ?? 0);
 
   const L = {
-    // band labels
-    path: { en: 'Path', es: 'Ruta', fr: 'Parcours', pt: 'Percurso', ta: 'பாதை', uk: 'Шлях', ar: 'المسار' },
-    ready: { en: 'Readiness', es: 'Preparación', fr: 'Préparation', pt: 'Prontidão', ta: 'தயார்நிலை', uk: 'Готовність', ar: 'الجاهزية' },
-    // user-facing path stages
-    exploring: { en: 'Exploring', es: 'Explorando', fr: 'Exploration', pt: 'Explorando', ta: 'ஆராய்ச்சி', uk: 'Досліджуємо', ar: 'استكشاف' },
-    soonReady: { en: 'Soon ready', es: 'Casi listo', fr: 'Bientôt prêt', pt: 'Quase pronto', ta: 'விரைவில் தயாராக', uk: 'Скоро готово', ar: 'قريبًا جاهز' },
-    jobReady:  { en: 'Job ready',  es: 'Listo para el trabajo', fr: 'Prêt pour l’emploi', pt: 'Pronto para o trabalho', ta: 'வேலையிற்குத் தயாராக', uk: 'Готово до роботи', ar: 'جاهز للعمل' },
-    // tooltips for underlying path (optional)
-    foundations: { en: 'Foundations' },
-    precision:   { en: 'Precision' },
-
-    // experience tag
-    exp: { en: 'Experience', es: 'Experiencia', fr: 'Expérience', pt: 'Experiência', ta: 'அனுபவம்', uk: 'Досвід', ar: 'الخبرة' },
-    expNew: { en: 'New', es: 'Inicial', fr: 'Nouveau', pt: 'Inicial', ta: 'புதிய', uk: 'Новачок', ar: 'جديد' },
-    expGrowing: { en: 'Growing', es: 'En progreso', fr: 'En progrès', pt: 'Em crescimento', ta: 'வளர்ந்து வருகிறது', uk: 'Зростає', ar: 'في تطوّر' },
-    expSolid: { en: 'Solid', es: 'Sólido', fr: 'Solide', pt: 'Sólido', ta: 'நிலையான', uk: 'Солідний', ar: 'راسخ' },
-    expSeasoned: { en: 'Seasoned', es: 'Consolidadx', fr: 'Expérimenté', pt: 'Experiente', ta: 'பழக்கம் வாய்ந்த', uk: 'Досвідчений', ar: 'متمرّس' },
+    path: { en: 'Path', ar: 'المسار' },
+    ready: { en: 'Readiness', ar: 'الجاهزية' },
+    exploring: { en: 'Exploring', ar: 'استكشاف' },
+    soonReady: { en: 'Soon ready', ar: 'قريبًا جاهز' },
+    jobReady: { en: 'Job ready', ar: 'جاهز للعمل' },
+    exp: { en: 'Experience', ar: 'الخبرة' },
+    expNew: { en: 'New', ar: 'جديد' },
+    expGrowing: { en: 'Growing', ar: 'في تطوّر' },
+    expSolid: { en: 'Solid', ar: 'راسخ' },
+    expSeasoned: { en: 'Seasoned', ar: 'متمرّس' },
   };
 
-  const pathKey = (path || '').toLowerCase() === 'precision' ? 'precision' : 'foundations';
-  let stageKey = pathKey === 'precision' ? 'soonReady' : 'exploring';
-  if (r >= 100) stageKey = 'jobReady';
-
-  const bandColors =
-    r < 25 ? { bg: '#FFF7ED', text: '#9A3412', ring: '#FDBA74' }
-  : r < 50 ? { bg: '#FEF9C3', text: '#92400E', ring: '#FDE68A' }
-  : r < 75 ? { bg: '#ECFDF5', text: '#065F46', ring: '#6EE7B7' }
-  : r < 100 ? { bg: '#EEF2FF', text: '#3730A3', ring: '#A5B4FC' }
-  : { bg: '#F0FDF4', text: '#166534', ring: '#4ADE80' };
+  const stageKey =
+    r >= 100 ? 'jobReady' :
+    r >= 50 ? 'soonReady' :
+    'exploring';
 
   const expLabel = {
-    New: L.expNew[lang] || L.expNew.en,
-    Growing: L.expGrowing[lang] || L.expGrowing.en,
-    Solid: L.expSolid[lang] || L.expSolid.en,
-    Seasoned: L.expSeasoned[lang] || L.expSeasoned.en,
+    New: L.expNew[lang],
+    Growing: L.expGrowing[lang],
+    Solid: L.expSolid[lang],
+    Seasoned: L.expSeasoned[lang],
   }[experienceStage || 'New'];
 
   return (
@@ -60,87 +45,30 @@ function SupportBand({ lang = 'en', path, readiness, experienceStage }) {
         display: 'grid',
         gridTemplateColumns: '1fr auto auto',
         gap: 12,
-        alignItems: 'center',
         padding: '12px 14px',
-        borderRadius: 10,
-        background: bandColors.bg,
-        border: `1px solid ${bandColors.ring}`,
         margin: '12px 0',
+        borderRadius: 10,
+        background: '#EEF2FF',
+        border: '1px solid #A5B4FC'
       }}
-      aria-label="Support overview"
     >
-      {/* Path stage */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 14, color: '#6B7280' }}>
-            {L.path[lang] || L.path.en}
-          </span>
-          <span
-            title={(L[pathKey] && (L[pathKey][lang] || L[pathKey].en)) || undefined}
-            style={{
-              fontWeight: 600,
-              fontSize: 14,
-              padding: '6px 10px',
-              borderRadius: 8,
-              background: '#F9FAFB',
-              color: '#111827',
-              border: '1px solid #E5E7EB',
-            }}
-          >
-            {(L[stageKey] && (L[stageKey][lang] || L[stageKey].en)) || 'Exploring'}
-          </span>
-        </div>
+      <div>
+        <strong>{L.path[lang]}:</strong> {L[stageKey][lang]}
       </div>
 
-      {/* Experience tag */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span style={{ fontSize: 14, color: '#6B7280' }}>
-          {L.exp[lang] || L.exp.en}
-        </span>
-        <span
-          style={{
-            fontWeight: 600,
-            fontSize: 14,
-            padding: '6px 10px',
-            borderRadius: 999,
-            background: '#F9FAFB',
-            color: '#111827',
-            border: '1px solid #E5E7EB',
-          }}
-        >
-          {expLabel}
-        </span>
+      <div>
+        <strong>{L.exp[lang]}:</strong> {expLabel}
       </div>
 
-      {/* Readiness % */}
-      <div style={{ justifySelf: isRTL ? 'start' : 'end' }}>
-        <div style={{ fontSize: 14, color: '#6B7280' }}>
-          {L.ready[lang] || L.ready.en}
-        </div>
-        <div
-          style={{
-            minWidth: 64,
-            display: 'inline-block',
-            textAlign: 'center',
-            fontWeight: 700,
-            fontSize: 16,
-            padding: '6px 10px',
-            borderRadius: 8,
-            color: bandColors.text,
-            background: '#FFFFFF',
-            border: `2px solid ${bandColors.ring}`,
-          }}
-          aria-label="Readiness percent"
-        >
-          {Number.isFinite(r) ? `${r}%` : '—'}
-        </div>
+      <div>
+        <strong>{L.ready[lang]}:</strong> {r}%
       </div>
     </section>
   );
 }
 
 /* ---------------------------------------------------------
-   Experience mini-form (inline): domain + months
+   Experience form
 ---------------------------------------------------------- */
 function ExperienceForm({ userId, language = 'en', onSaved }) {
   const [domain, setDomain] = useState('customer_service');
@@ -149,80 +77,48 @@ function ExperienceForm({ userId, language = 'en', onSaved }) {
   const [msg, setMsg] = useState('');
   const isRTL = language === 'ar';
 
-  const canSave = !!userId && String(months).trim() !== '' && Number(months) >= 0;
-
   async function save() {
-    if (!canSave) return;
-    setBusy(true);
-    setMsg('');
+    if (!userId || !months.trim()) return;
+    setBusy(true); setMsg('');
     try {
-      // Upsert per (user_id, domain) if a unique index exists
-      const { error } = await supabase
+      await supabase
         .from('experience_evidence')
-        .upsert(
-          [{ user_id: userId, domain, months: Number(months) }],
-          { onConflict: 'user_id,domain' }
-        );
-      if (error) throw error;
+        .upsert([{ user_id: userId, domain, months: Number(months) }], {
+          onConflict: 'user_id,domain'
+        });
       setMsg('Saved.');
-      onSaved?.();
+      onSaved && onSaved();
     } catch (e) {
-      setMsg(e?.message || 'Could not save.');
-    } finally {
-      setBusy(false);
+      setMsg(e.message);
     }
+    setBusy(false);
   }
 
   return (
     <div dir={isRTL ? 'rtl' : 'ltr'} style={{ marginTop: 8, padding: 12, border: '1px solid #eee', borderRadius: 8 }}>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-        <label style={{ fontSize: 13, color: '#555' }}>Domain</label>
-        <select
-          value={domain}
-          onChange={(e) => setDomain(e.target.value)}
-          style={{ padding: 8, border: '1px solid #ddd', borderRadius: 6 }}
-        >
-          <option value="customer_service">Customer service</option>
-          <option value="admin">Admin</option>
-          <option value="warehouse">Warehouse</option>
-        </select>
+      <label>Domain:</label>
+      <select value={domain} onChange={(e) => setDomain(e.target.value)}>
+        <option value="customer_service">Customer service</option>
+        <option value="admin">Admin</option>
+        <option value="warehouse">Warehouse</option>
+      </select>
 
-        <label style={{ fontSize: 13, color: '#555', marginInlineStart: 8 }}>Months</label>
-        <input
-          type="number"
-          min={0}
-          value={months}
-          onChange={(e) => setMonths(e.target.value)}
-          placeholder="0"
-          style={{ width: 90, padding: 8, border: '1px solid #ddd', borderRadius: 6 }}
-        />
+      <label style={{ marginLeft: 10 }}>Months:</label>
+      <input type="number" min={0} value={months} onChange={(e) => setMonths(e.target.value)} />
 
-        <button
-          onClick={save}
-          disabled={!canSave || busy}
-          style={{
-            padding: '8px 12px',
-            background: canSave ? '#2563EB' : '#9CA3AF',
-            color: '#fff',
-            border: 'none',
-            borderRadius: 8,
-            fontWeight: 600,
-            cursor: canSave ? 'pointer' : 'not-allowed',
-          }}
-        >
-          {busy ? 'Saving…' : 'Save'}
-        </button>
-      </div>
-      {msg && <div style={{ marginTop: 6, fontSize: 12, color: '#374151' }}>{msg}</div>}
+      <button onClick={save} disabled={busy}>
+        {busy ? 'Saving…' : 'Save'}
+      </button>
+
+      {msg && <div>{msg}</div>}
     </div>
   );
 }
 
 /* ---------------------------------------------------------
-   Small Chip for gap actions
+   Chip for actions
 ---------------------------------------------------------- */
-function Chip({ href, children, lang = 'en' }) {
-  const isRTL = lang === 'ar';
+function Chip({ href, children, lang }) {
   return (
     <Link
       href={href}
@@ -232,143 +128,76 @@ function Chip({ href, children, lang = 'en' }) {
         gap: 6,
         padding: '6px 10px',
         borderRadius: 999,
-        fontSize: 12,
-        fontWeight: 600,
-        color: '#1F2937',
         background: '#F3F4F6',
         border: '1px solid #E5E7EB',
         textDecoration: 'none',
-        outline: 'none',
+        fontSize: 12
       }}
-      dir={isRTL ? 'rtl' : 'ltr'}
-      aria-label={typeof children === 'string' ? children : 'Action'}
     >
-      <span
-        aria-hidden
-        style={{
-          width: 6,
-          height: 6,
-          borderRadius: 999,
-          background: '#111827',
-          display: 'inline-block',
-        }}
-      />
+      <span style={{ width: 6, height: 6, background: '#111', borderRadius: 999 }} />
       {children}
     </Link>
   );
 }
 
 /* ---------------------------------------------------------
-   Map each gap to deep-link actions
+   Main component
 ---------------------------------------------------------- */
-function actionsForGap(g, ui, language) {
-  if (!g?.type) return [];
-  const L = ui.actionLabels;
-
-  if (g.type === 'keywords') return [{ label: L.atsTune[language] || L.atsTune.en, href: '/activities/cv-ats-1' }];
-  if (g.type === 'interview') return [{ label: L.star3[language] || L.star3.en, href: '/activities/int-star-1' }];
-  if (g.type === 'level') {
-    return [
-      { label: L.atsTune[language] || L.atsTune.en, href: '/activities/cv-ats-1' },
-      { label: L.star3[language] || L.star3.en, href: '/activities/int-star-1' },
-    ];
-  }
-  return [];
-}
-
-/* ---------------------------------------------------------
-   Helper: months → stage
----------------------------------------------------------- */
-function monthsToStage(totalMonths) {
-  if (!Number.isFinite(totalMonths) || totalMonths <= 0) return 'New';
-  if (totalMonths < 12) return 'New';
-  if (totalMonths < 36) return 'Growing';
-  if (totalMonths < 60) return 'Solid';
-  return 'Seasoned';
-}
-
-/* =========================================================
-   MAIN COMPONENT
-========================================================= */
 export default function ResultView({ assessmentId, language, userId = null }) {
-  const [data, setData] = useState(null);
-  const [err, setErr] = useState('');
-  const [loading, setLoading] = useState(true);
 
-  // Experience state
+  /* STATE */
+  const [data, setData] = useState(null);
+  const [goalPlan, setGoalPlan] = useState(null);
   const [expRows, setExpRows] = useState([]);
-  const [expLoading, setExpLoading] = useState(false);
   const [showExpForm, setShowExpForm] = useState(false);
 
-  // PR‑4: Goal plan (API response)
-  const [goalPlan, setGoalPlan] = useState(null);
+  const qs = useMemo(() => {
+    const params = new URLSearchParams();
+    params.set('assessment_id', assessmentId || 'demo');
+    params.set('language', language || 'en');
+    if (userId) params.set('user_id', userId);
+    return params.toString();
+  }, [assessmentId, language, userId]);
 
-  // ===== UI labels per language =====
-  const ui = {
-    progress: {
-      en: 'Progress', es: 'Progreso', fr: 'Progrès', pt: 'Progresso',
-      ta: 'முன்னேற்றம்', uk: 'Прогрес', ar: 'التقدّم',
-    },
-    nextSteps: {
-      en: 'Your next steps', es: 'Tus próximos pasos', fr: 'Vos prochaines étapes', pt: 'Seus próximos passos',
-      ta: 'உங்கள் அடுத்த படிகள்', uk: 'Ваші наступні кроки', ar: 'خطواتك التالية',
-    },
-    suggestedRoles: {
-      en: 'Suggested roles', es: 'Roles sugeridos', fr: 'Rôles suggérés', pt: 'Funções sugeridas',
-      ta: 'பரிந்துரைக்கப்பட்ட வேடங்கள்', uk: 'Рекомендовані ролі', ar: 'الأدوار المقترحة',
-    },
-    readyHeading: {
-      en: 'Ready now', es: 'Listo ahora', fr: 'Prêt maintenant', pt: 'Pronto agora',
-      ta: 'தயார்', uk: 'Готові вже', ar: 'جاهز الآن',
-    },
-    bridgeHeading: {
-      en: 'Bridge roles (1–2 gaps)', es: 'Roles puente (1–2 brechas)', fr: 'Rôles passerelle (1–2 écarts)', pt: 'Funções ponte (1–2 lacunas)',
-      ta: 'பாலம் வேடங்கள் (1–2 இடைவெளிகள்)', uk: 'Ролі‑містки (1–2 прогалини)', ar: 'أدوار الجسر (فجوة أو فجوتان)',
-    },
-    // Badge labels
-    badge: {
-      ready: {
-        en: 'Ready', es: 'Listo', fr: 'Prêt', pt: 'Pronto',
-        ta: 'தயார்', uk: 'Готово', ar: 'جاهز',
-      },
-      bridge: {
-        en: 'Bridge', es: 'Puente', fr: 'Passerelle', pt: 'Ponte',
-        ta: 'பாலம்', uk: 'Місток', ar: 'جسر',
-      },
-    },
-    // Gap captions
-    gapLabels: {
-      interviewMin: {
-        en: 'Interview minimum', es: 'Entrevista mínima', fr: 'Seuil d’entretien', pt: 'Mínimo de entrevista',
-        ta: 'நேர்காணல் குறைந்தபட்சம்', uk: 'Мінімум співбесіди', ar: 'الحد الأدنى للمقابلة',
-      },
-      levelReq: {
-        en: 'Overall level', es: 'Nivel global', fr: 'Niveau global', pt: 'Nível geral',
-        ta: 'மொத்த நிலை', uk: 'Загальний рівень', ar: 'المستوى العام',
-      },
-      keywords: {
-        en: 'Keywords', es: 'Palabras clave', fr: 'Mots‑clés', pt: 'Palavras‑chave',
-        ta: 'முக்கிய சொற்கள்', uk: 'Ключові слова', ar: 'الكلمات المفتاحية',
-      },
-      certificates: {
-        en: 'Certificates', es: 'Certificados', fr: 'Certificats', pt: 'Certificados',
-        ta: 'சான்றிதழ்கள்', uk: 'Сертифікати', ar: 'الشهادات',
-      },
-    },
-    // Action chip labels
-    actionLabels: {
-      atsTune: {
-        en: 'ATS CV tune (10 min)', es: 'Ajuste ATS del CV (10 min)', fr: 'Ajuster le CV pour ATS (10 min)',
-        pt: 'Ajuste ATS do CV (10 min)', ta: 'ATS CV திருத்தம் (10 நிமி)', uk: 'Налаштування резюме під ATS (10 хв)', ar: 'ملاءمة السيرة الذاتية لنظام ATS (10 دقائق)',
-      },
-      star3: {
-        en: 'Create 3 STAR stories', es: 'Crea 3 historias STAR', fr: 'Rédiger 3 histoires STAR',
-        pt: 'Criar 3 histórias STAR', ta: '3 STAR கதைகள் உருவாக்கு', uk: 'Створіть 3 історії STAR', ar: 'أنشئ 3 قصص STAR',
-      },
-    },
+  /* LOAD RESULTS */
+  useEffect(() => {
+    (async () => {
+      const res = await fetch(`/api/assessment/result?${qs}`);
+      setData(await res.json());
+    })();
+  }, [qs]);
+
+  /* LOAD EXPERIENCE */
+  async function loadExperience() {
+    if (!userId) return;
+    const { data } = await supabase
+      .from('experience_evidence')
+      .select('months');
+    setExpRows(data || []);
+  }
+  useEffect(() => { loadExperience(); }, [userId]);
+
+  const totalMonths = expRows.reduce((a, b) => a + (b.months || 0), 0);
+  const experienceStage =
+    totalMonths >= 60 ? 'Seasoned' :
+    totalMonths >= 36 ? 'Solid' :
+    totalMonths >= 12 ? 'Growing' :
+    'New';
+
+  if (!data) return <main>Loading…</main>;
+
+  const { summary, reflection, flightPath = [], progress, roleSuggestions, path } = data;
+
+  /* Param helper */
+  const withParams = (base) => {
+    const p = new URLSearchParams();
+    p.set('assessment_id', assessmentId || 'demo');
+    p.set('language', language);
+    if (userId) p.set('user_id', userId);
+    return `${base}?${p.toString()}`;
   };
 
-  // PR‑4: Simple bilingual labels for Goal panel
+  /* GOAL LABELS */
   const goalL = {
     panelTitle: { en: 'My goal — guidance', ar: 'هدفي — إرشادات' },
     alreadyHave: { en: 'Already have', ar: 'متوفر لديك' },
@@ -377,175 +206,12 @@ export default function ResultView({ assessmentId, language, userId = null }) {
     chooseHint: { en: 'Choose a goal above to see guidance.', ar: 'اختر هدفًا بالأعلى لعرض الإرشادات.' }
   };
 
-  // ===== Styles (inline) =====
-  const styles = {
-    container: { maxWidth: 820, margin: '40px auto', padding: 16 },
-    progressBarOuter: { height: 12, background: '#eee', borderRadius: 6, overflow: 'hidden' },
-    progressBarInner: (p) => ({
-      width: `${p}%`,
-      height: '100%',
-      background: p >= 75 ? '#16a34a' : '#3b82f6',
-      transition: 'width 400ms ease',
-    }),
-    roleGroup: { marginTop: 24 },
-    card: {
-      border: '1px solid #e5e7eb',
-      borderRadius: 8,
-      boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
-      padding: 14,
-      marginBottom: 12,
-      background: '#fff',
-    },
-    cardHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-    title: { margin: 0, fontWeight: 600 },
-    badge: (variant) => ({
-      fontSize: 12,
-      padding: '2px 8px',
-      borderRadius: 999,
-      ...(variant === 'ready'
-        ? { background: '#DCFCE7', color: '#166534', border: '1px solid #86efac' }
-        : { background: '#FEF3C7', color: '#92400E', border: '1px solid #fcd34d' }),
-      whiteSpace: 'nowrap',
-    }),
-    why: { color: '#444', margin: '8px 0 4px' },
-    gapList: { color: '#555', margin: '6px 0 0 0' },
-    chipsRow: { display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 },
-    expRow: { display: 'flex', gap: 8, alignItems: 'center', marginTop: -8, marginBottom: 12 },
-  };
-
-  // ===== Build query string from props =====
-  const qs = useMemo(() => {
-    const params = new URLSearchParams();
-    params.set('assessment_id', assessmentId || 'demo');
-    params.set('language', (language || 'en').toLowerCase());
-    if (userId) params.set('user_id', userId);
-    return params.toString();
-  }, [assessmentId, language, userId]);
-
-  // ===== Fetch Result API =====
-  useEffect(() => {
-    let on = true;
-    setLoading(true);
-    setErr('');
-    (async () => {
-      try {
-        const res = await fetch(`/api/assessment/result?${qs}`, { cache: 'no-store' });
-        const json = await res.json();
-        if (!on) return;
-        if (res.ok) setData(json);
-        else setErr(json?.error || 'Could not load result.');
-      } catch (e) {
-        if (on) setErr(String(e?.message || e));
-      } finally {
-        if (on) setLoading(false);
-      }
-    })();
-    return () => { on = false; };
-  }, [qs]);
-
-  // ===== Fetch Experience evidence (client-side) =====
-  async function loadExperience() {
-    if (!userId) { setExpRows([]); return; }
-    setExpLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('experience_evidence')
-        .select('domain, months')
-        .eq('user_id', userId);
-      if (error) throw error;
-      setExpRows(Array.isArray(data) ? data : []);
-    } catch (e) {
-      console.error('experience load', e);
-    } finally {
-      setExpLoading(false);
-    }
-  }
-
-  useEffect(() => { loadExperience(); }, [userId]);
-
-  // ========== ADD THIS HELPER (param-aware links) ==========
-  // Build activity links with the current params
-  const withParams = (base) => {
-    const q = new URLSearchParams();
-    q.set('assessment_id', assessmentId || 'demo');
-    q.set('language', (language || 'en').toLowerCase());
-    if (userId) q.set('user_id', userId);
-    return `${base}?${q.toString()}`;
-  };
-  // =========================================================
-
-  if (loading) return <main style={{ padding: 24 }}>Loading…</main>;
-  if (err) return <main style={{ padding: 24, color: 'crimson' }}>{err}</main>;
-  if (!data) return <main style={{ padding: 24 }}>No data.</main>;
-
-  const { summary, reflection, flightPath = [], progress, roleSuggestions, path } = data || {};
-  const p = progress?.value ?? 0;
-  const ready = roleSuggestions?.readyNow || [];
-  const bridges = roleSuggestions?.bridgeRoles || [];
-
-  // Compute Experience stage from saved rows
-  const totalMonths = expRows.reduce((acc, r) => acc + (Number(r?.months) || 0), 0);
-  const experienceStage = monthsToStage(totalMonths);
-
-  // Build action chips for gaps (use withParams here)
-  const renderGap = (g) => {
-    if (!g) return null;
-    const L = ui.gapLabels;
-    let label = '';
-    if (g.type === 'interview') {
-      label = `${L.interviewMin[language] || L.interviewMin.en}: ${g.key}`;
-    } else if (g.type === 'level') {
-      label = `${L.levelReq[language] || L.levelReq.en}: ${g.key}`;
-    } else if (g.type === 'keywords') {
-      const keys = Array.isArray(g.key) ? g.key.join(', ') : String(g.key);
-      label = `${L.keywords[language] || L.keywords.en}: ${keys}`;
-    } else if (g.type === 'certificate') {
-      const keys = Array.isArray(g.key) ? g.key.join(', ') : String(g.key);
-      label = `${L.certificates[language] || L.certificates.en}: ${keys}`;
-    }
-    const actions = actionsForGap(g, ui, language);
-    return (
-      <li>
-        {label}
-        {actions.length > 0 && (
-          <div style={styles.chipsRow} dir={language === 'ar' ? 'rtl' : 'ltr'}>
-            {actions.map((a, idx) => (
-              <Chip key={`${g.type}-${idx}`} href={withParams(a.href)} lang={language}>
-                {a.label}
-              </Chip>
-            ))}
-          </div>
-        )}
-      </li>
-    );
-  };
-
-  const RoleCard = ({ item, variant }) => (
-    <article style={styles.card}>
-      <header style={styles.cardHeader}>
-        <h4 style={styles.title}>{item.title}</h4>
-        <span style={styles.badge(variant)}>
-          {variant === 'ready'
-            ? (ui.badge.ready[language] || ui.badge.ready.en)
-            : (ui.badge.bridge[language] || ui.badge.bridge.en)}
-        </span>
-      </header>
-      {item.why && <p style={styles.why}>{item.why}</p>}
-      {Array.isArray(item.gaps) && item.gaps.length > 0 && (
-        <ul style={styles.gapList}>
-          {item.gaps.map((g, i) => <span key={i}>{renderGap(g)}</span>)}
-        </ul>
-      )}
-    </article>
-  );
-
   return (
-    <main dir={language === 'ar' ? 'rtl' : 'ltr'} style={styles.container}>
-      {/* Headline & message (already localized by API) */}
-      <h2 style={{ marginTop: 0 }}>{summary?.headline || 'Your starting point'}</h2>
-      <p style={{ color: '#444', marginTop: 4 }}>{summary?.message}</p>
+    <main dir={language === 'ar' ? 'rtl' : 'ltr'} style={{ maxWidth: 820, margin: '40px auto', padding: 16 }}>
 
-      {/* Support band: Path + Experience + Readiness */}
+      <h2>{summary?.headline || 'Your starting point'}</h2>
+      <p>{summary?.message}</p>
+
       <SupportBand
         lang={language}
         path={path}
@@ -553,28 +219,26 @@ export default function ResultView({ assessmentId, language, userId = null }) {
         experienceStage={experienceStage}
       />
 
-      {/* CV Insights Panel */}
       <CvInsights userId={userId} language={language} />
 
-      {/* PR‑4: My Goal selector + results */}
-      <MyGoalForm
-        userId={userId}
-        language={language}
-        onResult={(data) => setGoalPlan(data)}
-      />
+      <MyGoalForm userId={userId} language={language} onResult={setGoalPlan} />
 
-      <section
-  dir={language === 'ar' ? 'rtl' : 'ltr'}
-  style={{
-    marginTop: 12,
-    marginBottom: 20,   // ← add this line
-    padding: 12,
-    border: '1px solid #e5e7eb',
-    borderRadius: 8,
-    background: '#fff'
-  }}
->
-          <h3 style={{ marginTop: 0 }}>
+      {/* -----------------------------------------
+          GOAL RESULTS PANEL (fixed version)
+      ------------------------------------------ */}
+      {goalPlan && goalPlan.ok ? (
+        <section
+          dir={language === 'ar' ? 'rtl' : 'ltr'}
+          style={{
+            marginTop: 12,
+            marginBottom: 20,
+            padding: 12,
+            border: '1px solid #e5e7eb',
+            borderRadius: 8,
+            background: '#fff'
+          }}
+        >
+          <h3>
             {(goalL.panelTitle[language] || goalL.panelTitle.en)} — {goalPlan.goal}
           </h3>
 
@@ -582,13 +246,11 @@ export default function ResultView({ assessmentId, language, userId = null }) {
           <div style={{ marginTop: 8 }}>
             <strong>{goalL.alreadyHave[language] || goalL.alreadyHave.en}:</strong>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
-              {(goalPlan.alreadyHave || []).length > 0
-                ? goalPlan.alreadyHave.map((k) => (
-                    <span key={`have-${k}`} style={{ background: '#f1f5f9', padding: '4px 8px', borderRadius: 6 }}>
-                      {k}
-                    </span>
-                  ))
-                : <span style={{ color: '#6b7280' }}>—</span>}
+              {(goalPlan.alreadyHave || []).map((k) => (
+                <span key={k} style={{ background: '#f1f5f9', padding: '4px 8px', borderRadius: 6 }}>
+                  {k}
+                </span>
+              ))}
             </div>
           </div>
 
@@ -596,27 +258,23 @@ export default function ResultView({ assessmentId, language, userId = null }) {
           <div style={{ marginTop: 12 }}>
             <strong>{goalL.gentlyMissing[language] || goalL.gentlyMissing.en}:</strong>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
-              {(goalPlan.gentlyMissing || []).length > 0
-                ? goalPlan.gentlyMissing.map((k) => (
-                    <span key={`miss-${k}`} style={{ background: '#fff7ed', padding: '4px 8px', borderRadius: 6 }}>
-                      {k}
-                    </span>
-                  ))
-                : <span style={{ color: '#6b7280' }}>—</span>}
+              {(goalPlan.gentlyMissing || []).map((k) => (
+                <span key={k} style={{ background: '#fff7ed', padding: '4px 8px', borderRadius: 6 }}>
+                  {k}
+                </span>
+              ))}
             </div>
 
-            {/* Simple suggested actions (route to your activities with params) */}
-            {(goalPlan.gentlyMissing || []).length > 0 && (
+            {/* Suggested actions */}
+            {goalPlan.gentlyMissing?.length > 0 && (
               <div style={{ marginTop: 10 }}>
-                <div style={{ marginBottom: 6 }}>
-                  <strong>{goalL.suggestions[language] || goalL.suggestions.en}:</strong>
-                </div>
-                <div style={styles.chipsRow}>
+                <strong>{goalL.suggestions[language] || goalL.suggestions.en}:</strong>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 8 }}>
                   <Chip href={withParams('/activities/cv-ats-1')} lang={language}>
-                    {ui.actionLabels.atsTune[language] || ui.actionLabels.atsTune.en}
+                    ATS CV tune (10 min)
                   </Chip>
                   <Chip href={withParams('/activities/int-star-1')} lang={language}>
-                    {ui.actionLabels.star3[language] || ui.actionLabels.star3.en}
+                    Create 3 STAR stories
                   </Chip>
                 </div>
               </div>
@@ -624,105 +282,37 @@ export default function ResultView({ assessmentId, language, userId = null }) {
           </div>
         </section>
       ) : (
-  <>
-    {/* If no goal chosen yet, show a gentle hint */}
-    <div style={{ marginTop: 8, color: '#6b7280' }}>
-      {goalL.chooseHint[language] || goalL.chooseHint.en}
-    </div>
-  </>
-)}
+        <>
+          {/* JSX-safe fallback */}
+          <div style={{ marginTop: 8, color: '#6b7280' }}>
+            {goalL.chooseHint[language] || goalL.chooseHint.en}
+          </div>
+        </>
+      )}
 
-      {/* Experience quick edit link */}
-      <div style={styles.expRow}>
-        <small style={{ color: '#6B7280' }}>
-          Total experience recorded: <strong>{totalMonths}</strong> month(s)
-          {expLoading ? ' …loading' : ''}
-        </small>
+      {/* Experience */}
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 20 }}>
+        <small>Total experience: <strong>{totalMonths}</strong> months</small>
+
         {userId && (
           <button
-            onClick={() => setShowExpForm(v => !v)}
+            onClick={() => setShowExpForm((v) => !v)}
             style={{
               padding: '6px 10px',
               background: '#F3F4F6',
               border: '1px solid #E5E7EB',
-              borderRadius: 8,
-              fontSize: 12,
-              cursor: 'pointer'
+              borderRadius: 8
             }}
           >
             {showExpForm ? 'Hide' : 'Add or edit experience'}
           </button>
         )}
       </div>
-      {showExpForm && userId && (
+
+      {showExpForm && (
         <ExperienceForm userId={userId} language={language} onSaved={loadExperience} />
       )}
 
-      {/* Progress bar */}
-      <section style={{ margin: '20px 0' }}>
-        <label style={{ display: 'block', marginBottom: 8 }}>
-          <strong>{ui.progress[language] || ui.progress.en}</strong>
-        </label>
-        <div style={styles.progressBarOuter}>
-          <div style={styles.progressBarInner(p)} />
-        </div>
-        <div style={{ fontSize: 12, color: '#444', marginTop: 6 }}>{p}%</div>
-        {progress?.nextPrompt && (
-          <div style={{ fontSize: 13, color: '#333', marginTop: 6 }}>{progress.nextPrompt}</div>
-        )}
-      </section>
-
-      {/* Next steps / flight path */}
-      <section style={{ marginTop: 24 }}>
-        <h3 style={{ marginBottom: 8 }}>{ui.nextSteps[language] || ui.nextSteps.en}</h3>
-        <ol style={{ paddingInlineStart: language === 'ar' ? 24 : 32 }}>
-          {flightPath.map((s, idx) => (
-            <li key={idx} style={{ marginBottom: 12 }}>
-              <div><strong>{s.title}</strong></div>
-              <div style={{ color: '#555' }}>{s.why}</div>
-              <div style={{ color: '#333' }}>{s.next}</div>
-            </li>
-          ))}
-        </ol>
-      </section>
-
-      {/* Role suggestions (cards) */}
-      <section style={styles.roleGroup}>
-        <h3 style={{ marginBottom: 8 }}>{ui.suggestedRoles[language] || ui.suggestedRoles.en}</h3>
-
-        {/* Ready now cards */}
-        {ready.length > 0 && (
-          <>
-            <h4 style={{ color: '#16a34a', margin: '8px 0' }}>
-              {ui.readyHeading[language] || ui.readyHeading.en}
-            </h4>
-            {ready.map((r) => (
-              <RoleCard key={`ready-${r.title}`} item={r} variant="ready" />
-            ))}
-          </>
-        )}
-
-        {/* Bridge role cards */}
-        {bridges.length > 0 && (
-          <>
-            <h4 style={{ color: '#a16207', margin: '14px 0 8px' }}>
-              {ui.bridgeHeading[language] || ui.bridgeHeading.en}
-            </h4>
-            {bridges.map((r) => (
-              <RoleCard key={`bridge-${r.title}`} item={r} variant="bridge" />
-            ))}
-          </>
-        )}
-
-        {ready.length === 0 && bridges.length === 0 && <p>No suggestions yet.</p>}
-      </section>
-
-      {/* Reflection / nudge (already localized by API) */}
-      {reflection && (
-        <section style={{ marginTop: 24, paddingTop: 8, borderTop: '1px solid #eee' }}>
-          <p style={{ color: '#444' }}>{reflection}</p>
-        </section>
-      )}
     </main>
   );
 }
