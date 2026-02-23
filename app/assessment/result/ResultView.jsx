@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { supabase } from '../../../lib/supabaseClient';
 
@@ -221,8 +221,11 @@ export default function ResultView({ assessmentId, language, userId = null }) {
   const [goalPlan, setGoalPlan] = useState(null);
   const [city, setCity] = useState('');
 
-  // Availability (PR‑5)
+  // Availability (PR‑5A)
   const [availability, setAvailability] = useState(null);
+  const [loadingAvail, setLoadingAvail] = useState(true);
+  const [savingAvail, setSavingAvail] = useState(false);
+  const [errorAvail, setErrorAvail] = useState('');
 
   // CV summary (top keywords/sectors for links & heuristics)
   const [cvSummary, setCvSummary] = useState(null);
@@ -232,7 +235,7 @@ export default function ResultView({ assessmentId, language, userId = null }) {
   const [expLoading, setExpLoading] = useState(false);
   const [showExpForm, setShowExpForm] = useState(false);
 
-  /* ---------- query string helper ---------- */
+  /* ---------- query string helper (existing API) ---------- */
   const qs = useMemo(() => {
     const params = new URLSearchParams();
     params.set('assessment_id', assessmentId || 'demo');
@@ -309,6 +312,46 @@ export default function ResultView({ assessmentId, language, userId = null }) {
   const totalMonths = expRows.reduce((acc, r) => acc + (Number(r?.months) || 0), 0);
   const experienceStage = monthsToStage(totalMonths);
 
+  /* ---------- PR‑5A: load & save Availability via API ---------- */
+  useEffect(() => {
+    let ignore = false;
+    async function loadAvailability() {
+      try {
+        if (!assessmentId) return;
+        setLoadingAvail(true);
+        setErrorAvail('');
+        const res = await fetch(`/api/availability/${assessmentId}`, { cache: 'no-store' });
+        const json = await res.json();
+        if (!ignore) setAvailability(json?.data || null);
+      } catch (e) {
+        if (!ignore) setErrorAvail('Failed to load availability.');
+      } finally {
+        if (!ignore) setLoadingAvail(false);
+      }
+    }
+    loadAvailability();
+    return () => { ignore = true; };
+  }, [assessmentId]);
+
+  const handleSaveAvailability = useCallback(async (value) => {
+    try {
+      setSavingAvail(true);
+      setErrorAvail('');
+      const res = await fetch(`/api/availability/${assessmentId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(value),
+      });
+      const json = await res.json();
+      if (json?.error) throw new Error(json.error);
+      setAvailability(json?.data || value);
+    } catch (e) {
+      setErrorAvail('Could not save availability.');
+    } finally {
+      setSavingAvail(false);
+    }
+  }, [assessmentId]);
+
   /* ---------- loading guards ---------- */
   if (loading) return <main style={{ padding: 24 }}>Loading…</main>;
   if (err) return <main style={{ padding: 24, color: 'crimson' }}>{err}</main>;
@@ -370,15 +413,16 @@ export default function ResultView({ assessmentId, language, userId = null }) {
 
         {item.why && <p style={{ color: '#444', margin: '8px 0 4px' }}>{item.why}</p>}
 
-       {/* Show Live Job Links for this role */}
-<LiveJobsLinks
-  goal={item.title}
-  level={experienceStage}
-  city={city}
-  keywords={cvSummary?.topKeywords || []}
-  language={language}
-  availability={availability}   // <-- add this line
-/>
+        {/* Live Job Links for this role */}
+        <LiveJobsLinks
+          goal={item.title}
+          level={experienceStage}
+          city={city}
+          keywords={cvSummary?.topKeywords || []}
+          language={language}
+          availability={availability}
+        />
+
         {/* Optional gaps */}
         {Array.isArray(item.gaps) && item.gaps.length > 0 && (
           <ul style={{ color: '#555', margin: '6px 0 0 16px' }}>
@@ -412,25 +456,14 @@ export default function ResultView({ assessmentId, language, userId = null }) {
       {/* CV Insights */}
       <CvInsights userId={userId} language={language} />
 
-      {/* Availability Card (PR‑5) */}
+      {/* Availability Card (PR‑5A) */}
       <AvailabilityCard
         language={language}
-   onSave={async (data) => {
-    setAvailability(data);
-
-    // Save to Supabase via API
-    const res = await fetch("/api/availability/save", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        userId: userId,
-        availability: data
-      }),
-    });
-
-    const j = await res.json();
-    console.log("Saved availability to DB:", j);
-}}
+        value={availability}
+        loading={loadingAvail}
+        saving={savingAvail}
+        error={errorAvail}
+        onSave={handleSaveAvailability}
       />
 
       {/* Goal selector */}
@@ -501,15 +534,15 @@ export default function ResultView({ assessmentId, language, userId = null }) {
             )}
           </div>
 
- {/* Live jobs for goal */}
-<LiveJobsLinks
-  goal={goalPlan.goal}
-  level={experienceStage}
-  city={city}
-  keywords={cvSummary?.topKeywords || []}
-  language={language}
-  availability={availability}   // <-- add this line
-/>
+          {/* Live jobs for goal */}
+          <LiveJobsLinks
+            goal={goalPlan.goal}
+            level={experienceStage}
+            city={city}
+            keywords={cvSummary?.topKeywords || []}
+            language={language}
+            availability={availability}
+          />
         </section>
       ) : (
         <>
