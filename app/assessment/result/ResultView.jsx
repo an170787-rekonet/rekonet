@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '../../../lib/supabaseClient';
-
+import CvInsights from "./components/CvInsights";
 /* ---------------------------------------------------------
    Support band: Path stage + Experience + Readiness %
    - No “Level” language shown.
@@ -538,6 +538,9 @@ export default function ResultView({ assessmentId, language, userId = null }) {
         readiness={progress?.value}
         experienceStage={experienceStage}
       />
+
+      {/* CV Insights Panel */}
+<CvInsights userId={userId} language={language} />
 
       {/* Experience quick edit link */}
       <div style={styles.expRow}>
