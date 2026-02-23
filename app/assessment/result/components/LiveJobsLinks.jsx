@@ -1,15 +1,15 @@
 // app/assessment/result/components/LiveJobsLinks.jsx
 "use client";
 
-import Link from "next/link";
+// NOTE: Use a plain <a> for external links to prevent client-side routing.
+// import Link from "next/link"; // <-- no longer needed
 
-// --- helpers ---
 const UK_POSTCODE_REGEX =
   /\b([A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}|GIR ?0AA)\b/i;
 
 function pickRadius(place) {
   if (!place) return null;
-  return UK_POSTCODE_REGEX.test(place) ? 0 : 10; // exact for postcodes, wider for towns
+  return UK_POSTCODE_REGEX.test(place) ? 0 : 10;
 }
 
 function levelTokens(level) {
@@ -56,29 +56,21 @@ function availabilityTerms(availability) {
 function indeedJobTypeParam(availability) {
   const c = (availability?.contract || "").toLowerCase();
   if (c === "part_time") return "parttime";
-  // extendable: fulltime, temporary, contract
   return null;
 }
 
-/**
- * Build outbound search links for Indeed UK, company careers via Google operators,
- * and a general Google Jobs-leaning search, with stronger relevance.
- */
 function buildSearchQueries({ goal, level, city, keywords = [], availability }) {
   const title = (goal || "").trim();
   const place = (city || "").trim();
 
-  // ---------- Tokens ----------
   const { positives: lvlPos, negatives: lvlNeg } = levelTokens(level);
   const syns = roleSynonyms(title);
   const skills = (keywords || []).slice(0, 5);
-
   const avail = availabilityTerms(availability);
 
-  // Title is quoted to prevent splitting in search engines
   const titleQuoted = title ? `"${title}"` : "";
 
-  // ---------- Indeed UK ----------
+  // ----- Indeed UK (pin endpoint + strong params) -----
   const indeedParts = [
     titleQuoted,
     ...syns,
@@ -88,16 +80,16 @@ function buildSearchQueries({ goal, level, city, keywords = [], availability }) 
     ...avail,
   ].filter(Boolean);
 
-  // If we somehow end up empty, keep at least the title
   const indeedQ = encodeURIComponent(
     (indeedParts.length ? indeedParts : [titleQuoted]).join(" ").trim()
   );
 
   const radius = pickRadius(place);
   const l = place ? encodeURIComponent(place) : "";
-
   const jt = indeedJobTypeParam(availability);
-  // fresh + relevant
+
+  // CHANGE 1: pin domain to uk.indeed.com and /jobs
+  const indeedBase = "https://uk.indeed.com/jobs";
   const params = [
     `q=${indeedQ}`,
     l ? `l=${l}` : null,
@@ -105,13 +97,14 @@ function buildSearchQueries({ goal, level, city, keywords = [], availability }) 
     "sort=date",
     "fromage=7",
     jt ? `jt=${jt}` : null,
+    "vjk=", // harmless param; helps some redirects keep query (optional)
   ]
     .filter(Boolean)
     .join("&");
 
-  const indeedHref = `https://www.indeed.co.uk/jobs?${params}`;
+  const indeedHref = `${indeedBase}?${params}`;
 
-  // ---------- Careers via Google operators ----------
+  // ----- Careers via Google operators -----
   const careersOps = [
     "site:workdayjobs.com",
     "site:greenhouse.io",
@@ -133,11 +126,11 @@ function buildSearchQueries({ goal, level, city, keywords = [], availability }) 
     careersTerms
   )}`;
 
-  // ---------- General Google Jobs-leaning search ----------
+  // ----- Google jobs-leaning search -----
   const googleTerms = [
     titleQuoted,
     place ? `"${place}"` : "",
-    ...syns.slice(0, 2), // keep it tight
+    ...syns.slice(0, 2),
     ...skills,
     ...avail,
     ...lvlNeg,
@@ -206,30 +199,31 @@ export default function LiveJobsLinks({
     >
       <div style={{ fontWeight: 600, marginBottom: 8 }}>{L.heading}</div>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-        <Link
+        {/* CHANGE 2: use plain <a> for external links */}
+        <a
           href={indeedHref}
           target="_blank"
           rel="noopener noreferrer"
           style={chipStyle("#F3F4F6")}
         >
           {L.indeed}
-        </Link>
-        <Link
+        </a>
+        <a
           href={careersHref}
           target="_blank"
           rel="noopener noreferrer"
           style={chipStyle("#E5F2FF")}
         >
           {L.careers}
-        </Link>
-        <Link
+        </a>
+        <a
           href={googleHref}
           target="_blank"
           rel="noopener noreferrer"
           style={chipStyle("#F1F5F9")}
         >
           {L.google}
-        </Link>
+        </a>
       </div>
     </div>
   );
