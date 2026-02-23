@@ -9,6 +9,7 @@ import CvInsights from './components/CvInsights';
 import MyGoalForm from './components/MyGoalForm';
 import LiveJobsLinks from './components/LiveJobsLinks';
 import AvailabilityCard from './components/AvailabilityCard';
+
 /* ---------------------------------------------------------
    Support band (Path + Experience + Readiness)
    – Bilingual + RTL
@@ -34,8 +35,10 @@ function SupportBand({ lang = 'en', path, readiness, experienceStage }) {
   const stageKey = r >= 100 ? 'jobReady' : r >= 50 ? 'soonReady' : 'exploring';
 
   const expLabel = {
-    New: L.expNew[lang], Growing: L.expGrowing[lang],
-    Solid: L.expSolid[lang], Seasoned: L.expSeasoned[lang],
+    New: L.expNew[lang],
+    Growing: L.expGrowing[lang],
+    Solid: L.expSolid[lang],
+    Seasoned: L.expSeasoned[lang],
   }[experienceStage || 'New'];
 
   return (
@@ -50,7 +53,7 @@ function SupportBand({ lang = 'en', path, readiness, experienceStage }) {
         background: '#EEF2FF',
         border: '1px solid #A5B4FC',
         margin: '12px 0',
-        alignItems: 'center'
+        alignItems: 'center',
       }}
       aria-label="Support overview"
     >
@@ -81,7 +84,8 @@ function ExperienceForm({ userId, language = 'en', onSaved }) {
 
   async function save() {
     if (!canSave) return;
-    setBusy(true); setMsg('');
+    setBusy(true);
+    setMsg('');
     try {
       const { error } = await supabase
         .from('experience_evidence')
@@ -108,7 +112,9 @@ function ExperienceForm({ userId, language = 'en', onSaved }) {
 
         <label style={{ fontSize: 13, color: '#555', marginInlineStart: 8 }}>Months</label>
         <input
-          type="number" min={0} value={months}
+          type="number"
+          min={0}
+          value={months}
           onChange={(e) => setMonths(e.target.value)}
           placeholder="0"
           style={{ width: 90, padding: 8, border: '1px solid #ddd', borderRadius: 6 }}
@@ -144,7 +150,7 @@ function Chip({ href, children, lang = 'en' }) {
         display: 'inline-flex', alignItems: 'center', gap: 6,
         padding: '6px 10px', borderRadius: 999, fontSize: 12, fontWeight: 600,
         color: '#1F2937', background: '#F3F4F6', border: '1px solid #E5E7EB',
-        textDecoration: 'none'
+        textDecoration: 'none',
       }}
       dir={isRTL ? 'rtl' : 'ltr'}
       aria-label={typeof children === 'string' ? children : 'Action'}
@@ -168,7 +174,7 @@ function monthsToStage(totalMonths) {
 
 // Blend API role suggestions with CV/goal/experience signals (light heuristic)
 function enhanceRoles({ readyNow = [], bridgeRoles = [], cvTopKeywords = [], experienceStage = 'New', goalTitle = '' }) {
-  const kwSet = new Set((cvTopKeywords || []).map(k => String(k).toLowerCase()));
+  const kwSet = new Set((cvTopKeywords || []).map((k) => String(k).toLowerCase()));
   const levelBoost = experienceStage === 'Seasoned' ? 2 : experienceStage === 'Solid' ? 1.5 : experienceStage === 'Growing' ? 1.25 : 1;
 
   function scoreRole(role) {
@@ -194,10 +200,10 @@ function enhanceRoles({ readyNow = [], bridgeRoles = [], cvTopKeywords = [], exp
     return score;
   }
 
-  const ready = [...readyNow].map(r => ({ ...r, _enhScore: scoreRole(r) }))
+  const ready = [...readyNow].map((r) => ({ ...r, _enhScore: scoreRole(r) }))
     .sort((a, b) => b._enhScore - a._enhScore);
 
-  const bridges = [...bridgeRoles].map(r => ({ ...r, _enhScore: scoreRole(r) }))
+  const bridges = [...bridgeRoles].map((r) => ({ ...r, _enhScore: scoreRole(r) }))
     .sort((a, b) => b._enhScore - a._enhScore);
 
   return { ready, bridges };
@@ -215,8 +221,8 @@ export default function ResultView({ assessmentId, language, userId = null }) {
   const [goalPlan, setGoalPlan] = useState(null);
   const [city, setCity] = useState('');
 
-// Availability (PR‑5)
-const [availability, setAvailability] = useState(null);
+  // Availability (PR‑5)
+  const [availability, setAvailability] = useState(null);
 
   // CV summary (top keywords/sectors for links & heuristics)
   const [cvSummary, setCvSummary] = useState(null);
@@ -246,7 +252,8 @@ const [availability, setAvailability] = useState(null);
   /* ---------- load result data ---------- */
   useEffect(() => {
     let on = true;
-    setLoading(true); setErr('');
+    setLoading(true);
+    setErr('');
     (async () => {
       try {
         const res = await fetch(`/api/assessment/result?${qs}`, { cache: 'no-store' });
@@ -269,10 +276,12 @@ const [availability, setAvailability] = useState(null);
     if (!userId) { setCvSummary(null); return; }
     (async () => {
       try {
-        const r = await fetch(`/api/cv/summary?user_id=${encodeURIComponent(userId)}&language=${encodeURIComponent((language||'en').toLowerCase())}`, { cache: 'no-store' });
+        const r = await fetch(`/api/cv/summary?user_id=${encodeURIComponent(userId)}&language=${encodeURIComponent((language || 'en').toLowerCase())}`, { cache: 'no-store' });
         const j = await r.json();
         if (on) setCvSummary(j?.ok ? j : null);
-      } catch { /* ignore */ }
+      } catch {
+        // ignore
+      }
     })();
     return () => { on = false; };
   }, [userId, language]);
@@ -314,7 +323,7 @@ const [availability, setAvailability] = useState(null);
     bridgeRoles: roleSuggestions.bridgeRoles,
     cvTopKeywords: cvSummary?.topKeywords || [],
     experienceStage,
-    goalTitle: goalPlan?.goal || ''
+    goalTitle: goalPlan?.goal || '',
   });
 
   const styles = {
@@ -323,7 +332,7 @@ const [availability, setAvailability] = useState(null);
     progressInner: { width: `${p}%`, height: '100%', background: p >= 75 ? '#16a34a' : '#3b82f6', transition: 'width 400ms ease' },
     card: { border: '1px solid #e5e7eb', borderRadius: 8, boxShadow: '0 1px 2px rgba(0,0,0,0.04)', padding: 14, marginBottom: 12, background: '#fff' },
     chipsRow: { display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8, marginBottom: 12 },
-    expRow: { display: 'flex', gap: 8, alignItems: 'center', marginTop: 20, marginBottom: 12 }
+    expRow: { display: 'flex', gap: 8, alignItems: 'center', marginTop: 20, marginBottom: 12 },
   };
 
   const ui = {
@@ -343,13 +352,19 @@ const [availability, setAvailability] = useState(null);
       <article style={styles.card}>
         <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
           <h4 style={{ margin: 0, fontWeight: 600 }}>{item.title}</h4>
-          <span style={{
-            fontSize: 12, padding: '2px 8px', borderRadius: 999,
-            ...(variant === 'ready'
-              ? { background: '#DCFCE7', color: '#166534', border: '1px solid #86efac' }
-              : { background: '#FEF3C7', color: '#92400E', border: '1px solid #fcd34d' })
-          }}>
-            {variant === 'ready' ? (ui.readyHeading[language] || ui.readyHeading.en) : (ui.bridgeHeading[language] || ui.bridgeHeading.en)}
+          <span
+            style={{
+              fontSize: 12,
+              padding: '2px 8px',
+              borderRadius: 999,
+              ...(variant === 'ready'
+                ? { background: '#DCFCE7', color: '#166534', border: '1px solid #86efac' }
+                : { background: '#FEF3C7', color: '#92400E', border: '1px solid #fcd34d' }),
+            }}
+          >
+            {variant === 'ready'
+              ? (ui.readyHeading[language] || ui.readyHeading.en)
+              : (ui.bridgeHeading[language] || ui.bridgeHeading.en)}
           </span>
         </header>
 
@@ -397,6 +412,15 @@ const [availability, setAvailability] = useState(null);
       {/* CV Insights */}
       <CvInsights userId={userId} language={language} />
 
+      {/* Availability Card (PR‑5) */}
+      <AvailabilityCard
+        language={language}
+        onSave={(data) => {
+          setAvailability(data);
+          console.log('Availability saved:', data);
+        }}
+      />
+
       {/* Goal selector */}
       <MyGoalForm
         userId={userId}
@@ -415,9 +439,9 @@ const [availability, setAvailability] = useState(null);
             marginTop: 12,
             marginBottom: 20, // spacing before experience row
             padding: 12,
-            border: '1px solid #e5e7eb',
+            border: '1px solid '#e5e7eb',
             borderRadius: 8,
-            background: '#fff'
+            background: '#fff',
           }}
         >
           <h3 style={{ marginTop: 0 }}>
@@ -491,11 +515,11 @@ const [availability, setAvailability] = useState(null);
         </small>
         {userId && (
           <button
-            onClick={() => setShowExpForm(v => !v)}
+            onClick={() => setShowExpForm((v) => !v)}
             style={{
               padding: '6px 10px',
               background: '#F3F4F6', border: '1px solid #E5E7EB', borderRadius: 8,
-              fontSize: 12, cursor: 'pointer'
+              fontSize: 12, cursor: 'pointer',
             }}
           >
             {showExpForm ? 'Hide' : 'Add or edit experience'}
