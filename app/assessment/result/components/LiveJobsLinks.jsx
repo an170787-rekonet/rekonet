@@ -10,7 +10,7 @@ import Link from "next/link";
  */
 function buildSearchQueries({ goal, level, city, keywords = [], availability }) {
   const title = (goal || "").trim();
-  const place = (city || "").trim();
+  const place = (city || "").trim(); // may be a UK postcode like "SE1 2AA"
 
   // Seniority control
   const lowLevel = ["new", "growing"].includes((level || "").toLowerCase());
@@ -32,18 +32,24 @@ function buildSearchQueries({ goal, level, city, keywords = [], availability }) 
   if (times?.morning) availTerms.push("morning");
   if (times?.afternoon) availTerms.push("afternoon");
 
-  const availText = availTerms.join(" ");
+  const availText = availTerms.join(" ").trim();
 
-  // 1) Indeed search
+  // ----- 1) Indeed UK search (fixes) -----
+  // - Use indeed.co.uk for UK relevance
+  // - Properly encode q and l
+  // - Use & (not &amp;)
+  // - radius=0 for postcode-precise results (adjust if you want a wider area)
   const indeedQuery = encodeURIComponent(
     [title, topKw, seniorFilter, availText].filter(Boolean).join(" ")
   );
   const indeedLoc = encodeURIComponent(place);
-  const indeedHref = `https://www.indeed.com/jobs?q=${indeedQuery}${
-    indeedLoc ? `&l=${indeedLoc}` : ""
-  }`;
+  const indeedBase = "https://www.indeed.co.uk/jobs";
+  const indeedParams =
+    `?q=${indeedQuery}` +
+    (indeedLoc ? `&l=${indeedLoc}&radius=0` : "");
+  const indeedHref = `${indeedBase}${indeedParams}`;
 
-  // 2) Company careers (Workday / Greenhouse / Lever) via Google operators
+  // ----- 2) Company careers (Workday / Greenhouse / Lever) via Google operators -----
   const careersOps = [
     "site:workdayjobs.com",
     "site:greenhouse.io",
@@ -52,7 +58,7 @@ function buildSearchQueries({ goal, level, city, keywords = [], availability }) 
 
   const careersTerms = [
     careersOps,
-    `"${title}"`,
+    title ? `"${title}"` : "",
     place ? `"${place}"` : "",
     topKw,
     availText,
@@ -65,9 +71,9 @@ function buildSearchQueries({ goal, level, city, keywords = [], availability }) 
     careersTerms
   )}`;
 
-  // 3) General Google Jobs
+  // ----- 3) General Google Jobs -----
   const googleTerms = [
-    `"${title}"`,
+    title ? `"${title}"` : "",
     place ? `"${place}"` : "",
     topKw,
     availText,
@@ -104,20 +110,20 @@ export default function LiveJobsLinks({
     {
       en: {
         heading: "Find live jobs",
-        indeed: "Indeed search",
+        indeed: "Indeed (UK)",
         careers: "Company career pages",
         google: "Google Jobs",
       },
       ar: {
         heading: "اعثر على وظائف مباشرة",
-        indeed: "بحث Indeed",
+        indeed: "بحث Indeed (المملكة المتحدة)",
         careers: "صفحات وظائف الشركات",
         google: "وظائف Google",
       },
     }[language] ||
     {
       heading: "Find live jobs",
-      indeed: "Indeed search",
+      indeed: "Indeed (UK)",
       careers: "Company career pages",
       google: "Google Jobs",
     };
