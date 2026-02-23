@@ -501,14 +501,15 @@ export default function ResultView({ assessmentId, language, userId = null }) {
             )}
           </div>
 
-          {/* Live jobs for goal */}
-          <LiveJobsLinks
-            goal={goalPlan.goal}
-            level={experienceStage}
-            city={city}
-            keywords={cvSummary?.topKeywords || []}
-            language={language}
-          />
+ {/* Live jobs for goal */}
+<LiveJobsLinks
+  goal={goalPlan.goal}
+  level={experienceStage}
+  city={city}
+  keywords={cvSummary?.topKeywords || []}
+  language={language}
+  availability={availability}   // <-- add this line
+/>
         </section>
       ) : (
         <>
