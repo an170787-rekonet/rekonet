@@ -1,0 +1,132 @@
+// app/api/cv/parse/route.js
+
+// If you use a server-side Supabase helper in app/api/_lib/supabase.js,
+// adjust the import below to match your actual export.
+import { createServerClient } from '../_lib/supabase'; // <-- if your file exports differently, I’ll help tweak
+
+// Small helper: pick top-N from a frequency map
+function topN(map, n = 7) {
+  return Object.entries(map)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, n)
+    .map(([k]) => k);
+}
+
+// Very lightweight keyword extraction for v1
+function extractSignals(rawText = '') {
+  const text = (rawText || '').toLowerCase();
+
+  // Keyword list used in your seeded sectors (customer_service, admin, warehouse)
+  // Snapshots seeded examples like these; safe to expand later. [1](https://maximusunitedkingdom-my.sharepoint.com/personal/ashley_neerohoo_maximusuk_co_uk/Documents/Microsoft%20Copilot%20Chat%20Files/Rekonet_Snapshot_v10.md)
+  const keywordBank = [
+    'customer service','complaints','crm','call centre','contact centre',
+    'ms office','excel','filing','data entry','scheduling','records',
+    'picking','packing','picking list','packing list','inventory'
+  ];
+
+  // Count occurrences
+  const freq = {};
+  for (const kw of keywordBank) {
+    const count = (text.match(new RegExp(`\\b${kw.replace(/\s+/g, '\\s+')}\\b`, 'gi')) || []).length;
+    if (count > 0) freq[kw] = count;
+  }
+
+  // Sector scoring (simple heuristic for v1, aligned to your seeded sectors) [1](https://maximusunitedkingdom-my.sharepoint.com/personal/ashley_neerohoo_maximusuk_co_uk/Documents/Microsoft%20Copilot%20Chat%20Files/Rekonet_Snapshot_v10.md)
+  const sectors = {
+    customer_service: ['customer service','complaints','crm','call centre','contact centre'],
+    admin: ['filing','data entry','ms office','excel','scheduling','records'],
+    warehouse: ['picking','packing','picking list','packing list','inventory']
+  };
+
+  const sectorScores = {};
+  for (const [sector, kws] of Object.entries(sectors)) {
+    sectorScores[sector] = kws.reduce((sum, kw) => sum + (freq[kw] || 0), 0);
+  }
+
+  return {
+    keywords: topN(freq, 7),
+    sectorScores
+  };
+}
+
+export async function POST(req) {
+  const startedAt = Date.now();
+  let supabase;
+
+  try {
+    supabase = createServerClient(); // uses service role or server env inside your helper
+
+    const contentType = req.headers.get('content-type') || '';
+    let text = '';
+    let user_id = '';
+    let language = '';
+    let assessment_id = '';
+
+    if (contentType.includes('application/json')) {
+      const body = await req.json();
+      text = (body?.text || '').toString();
+      user_id = (body?.user_id || '').toString();
+      language = (body?.language || '').toString();
+      assessment_id = (body?.assessment_id || '').toString();
+    } else if (contentType.includes('multipart/form-data')) {
+      const form = await req.formData();
+      text = String(form.get('text') || '');
+      user_id = String(form.get('user_id') || '');
+      language = String(form.get('language') || '');
+      assessment_id = String(form.get('assessment_id') || '');
+
+      // Optional: if a file was uploaded, you could extract text here later
+      // const file = form.get('file'); // Blob
+    } else {
+      return new Response(JSON.stringify({ ok: false, error: 'Unsupported content-type' }), {
+        status: 415,
+        headers: { 'content-type': 'application/json' }
+      });
+    }
+
+    if (!user_id) {
+      return new Response(JSON.stringify({ ok: false, error: 'Missing user_id' }), {
+        status: 400,
+        headers: { 'content-type': 'application/json' }
+      });
+    }
+
+    const parsed = extractSignals(text);
+
+    // Insert into cv_documents as per your snapshot schema [1](https://maximusunitedkingdom-my.sharepoint.com/personal/ashley_neerohoo_maximusuk_co_uk/Documents/Microsoft%20Copilot%20Chat%20Files/Rekonet_Snapshot_v10.md)
+    const { error } = await supabase
+      .from('cv_documents')
+      .insert({
+        user_id,
+        file_name: null,
+        mime_type: 'text/plain',
+        text_extracted: text,
+        parsed
+      });
+
+    if (error) {
+      return new Response(JSON.stringify({ ok: false, error: error.message }), {
+        status: 500,
+        headers: { 'content-type': 'application/json' }
+      });
+    }
+
+    const ms = Date.now() - startedAt;
+    return new Response(JSON.stringify({
+      ok: true,
+      saved: true,
+      took_ms: ms,
+      summary: parsed
+    }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' }
+    });
+
+  } catch (err) {
+    // Always return JSON so the client’s res.json() never fails
+    return new Response(JSON.stringify({ ok: false, error: String(err?.message || err) }), {
+      status: 500,
+      headers: { 'content-type': 'application/json' }
+    });
+  }
+}
