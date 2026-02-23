@@ -37,7 +37,14 @@ export default function CvInsights({ userId, language }) {
   }
 
   return (
-    <div style={{ marginTop: "1.5rem", padding: "1rem", border: "1px solid #eee", borderRadius: "8px" }}>
+    <div 
+      style={{ 
+        marginTop: "1.5rem", 
+        marginBottom: "1.5rem",
+        padding: "1rem", 
+        border: "1px solid #eee", 
+        borderRadius: "8px" 
+      }}>
       <h3 style={{ marginBottom: "0.5rem" }}>CV Insights</h3>
 
       <div>
