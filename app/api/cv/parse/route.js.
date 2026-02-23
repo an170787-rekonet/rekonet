@@ -1,10 +1,13 @@
 // app/api/cv/parse/route.js
 
-// If you use a server-side Supabase helper in app/api/_lib/supabase.js,
-// adjust the import below to match your actual export.
-import { createServerClient } from '../_lib/supabase'; // <-- if your file exports differently, I’ll help tweak
+// Ensure this API runs on Node (not Edge), because we use the Supabase server client.
+export const runtime = 'nodejs';
 
-// Small helper: pick top-N from a frequency map
+// Import your server Supabase helper (we created this earlier).
+// From app/api/cv/parse/route.js → ../../_lib/supabase
+import { createServerClient } from '../../_lib/supabase';
+
+// ---------- helpers ----------
 function topN(map, n = 7) {
   return Object.entries(map)
     .sort((a, b) => b[1] - a[1])
@@ -12,12 +15,10 @@ function topN(map, n = 7) {
     .map(([k]) => k);
 }
 
-// Very lightweight keyword extraction for v1
 function extractSignals(rawText = '') {
   const text = (rawText || '').toLowerCase();
 
-  // Keyword list used in your seeded sectors (customer_service, admin, warehouse)
-  // Snapshots seeded examples like these; safe to expand later. [1](https://maximusunitedkingdom-my.sharepoint.com/personal/ashley_neerohoo_maximusuk_co_uk/Documents/Microsoft%20Copilot%20Chat%20Files/Rekonet_Snapshot_v10.md)
+  // Keep it simple for v1 (matches your seeded sectors).
   const keywordBank = [
     'customer service','complaints','crm','call centre','contact centre',
     'ms office','excel','filing','data entry','scheduling','records',
@@ -27,11 +28,12 @@ function extractSignals(rawText = '') {
   // Count occurrences
   const freq = {};
   for (const kw of keywordBank) {
-    const count = (text.match(new RegExp(`\\b${kw.replace(/\s+/g, '\\s+')}\\b`, 'gi')) || []).length;
+    const pattern = new RegExp(`\\b${kw.replace(/\s+/g, '\\s+')}\\b`, 'gi');
+    const count = (text.match(pattern) || []).length;
     if (count > 0) freq[kw] = count;
   }
 
-  // Sector scoring (simple heuristic for v1, aligned to your seeded sectors) [1](https://maximusunitedkingdom-my.sharepoint.com/personal/ashley_neerohoo_maximusuk_co_uk/Documents/Microsoft%20Copilot%20Chat%20Files/Rekonet_Snapshot_v10.md)
+  // Sector scores (very light heuristic for v1)
   const sectors = {
     customer_service: ['customer service','complaints','crm','call centre','contact centre'],
     admin: ['filing','data entry','ms office','excel','scheduling','records'],
@@ -49,12 +51,12 @@ function extractSignals(rawText = '') {
   };
 }
 
+// ---------- handlers ----------
 export async function POST(req) {
   const startedAt = Date.now();
-  let supabase;
 
   try {
-    supabase = createServerClient(); // uses service role or server env inside your helper
+    const supabase = createServerClient();
 
     const contentType = req.headers.get('content-type') || '';
     let text = '';
@@ -74,8 +76,7 @@ export async function POST(req) {
       user_id = String(form.get('user_id') || '');
       language = String(form.get('language') || '');
       assessment_id = String(form.get('assessment_id') || '');
-
-      // Optional: if a file was uploaded, you could extract text here later
+      // (Optional) handle uploaded file later
       // const file = form.get('file'); // Blob
     } else {
       return new Response(JSON.stringify({ ok: false, error: 'Unsupported content-type' }), {
@@ -93,16 +94,13 @@ export async function POST(req) {
 
     const parsed = extractSignals(text);
 
-    // Insert into cv_documents as per your snapshot schema [1](https://maximusunitedkingdom-my.sharepoint.com/personal/ashley_neerohoo_maximusuk_co_uk/Documents/Microsoft%20Copilot%20Chat%20Files/Rekonet_Snapshot_v10.md)
-    const { error } = await supabase
-      .from('cv_documents')
-      .insert({
-        user_id,
-        file_name: null,
-        mime_type: 'text/plain',
-        text_extracted: text,
-        parsed
-      });
+    const { error } = await supabase.from('cv_documents').insert({
+      user_id,
+      file_name: null,
+      mime_type: 'text/plain',
+      text_extracted: text,
+      parsed
+    });
 
     if (error) {
       return new Response(JSON.stringify({ ok: false, error: error.message }), {
@@ -129,4 +127,12 @@ export async function POST(req) {
       headers: { 'content-type': 'application/json' }
     });
   }
+}
+
+// Simple GET to verify the route is alive from a browser
+export async function GET() {
+  return new Response(JSON.stringify({ ok: true, alive: true }), {
+    status: 200,
+    headers: { 'content-type': 'application/json' }
+  });
 }
