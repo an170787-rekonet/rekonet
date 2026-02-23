@@ -257,12 +257,22 @@ export default function AvailabilityCard({
               <div style={{ fontSize: 12, color: "#374151", marginBottom: 6 }}>
                 {L.earliest[language]}
               </div>
-              <input
-                type="date"
-                value={earliest || ""}
-                onChange={(e) => setEarliest(e.target.value)}
-                style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 6 }}
-              />
+        <input
+  type="date"
+  value={earliest || ""}
+  onChange={(e) => setEarliest(e.target.value)}
+  style={{
+    width: 140,            // keeps the control inside the box
+    minWidth: 120,         // avoids shrinking too much
+    maxWidth: 180,         // avoids stretching past the cell
+    padding: 8,
+    border: "1px solid #ddd",
+    borderRadius: 6,
+    overflow: "hidden",    // hides any native control overflow
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  }}
+/>
             </div>
           </div>
 
