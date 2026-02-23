@@ -1,15 +1,16 @@
 // app/assessment/result/components/LiveJobsLinks.jsx
 "use client";
 
-// NOTE: Use a plain <a> for external links to prevent client-side routing.
-// import Link from "next/link"; // <-- no longer needed
+// NOTE: External links use a plain <a> to avoid Next.js client-side routing side-effects.
+// import Link from "next/link"; // not needed
 
+// Detect common UK postcode patterns
 const UK_POSTCODE_REGEX =
   /\b([A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}|GIR ?0AA)\b/i;
 
 function pickRadius(place) {
   if (!place) return null;
-  return UK_POSTCODE_REGEX.test(place) ? 0 : 10;
+  return UK_POSTCODE_REGEX.test(place) ? 0 : 10; // exact for postcodes, wider for towns
 }
 
 function levelTokens(level) {
@@ -56,6 +57,7 @@ function availabilityTerms(availability) {
 function indeedJobTypeParam(availability) {
   const c = (availability?.contract || "").toLowerCase();
   if (c === "part_time") return "parttime";
+  // extendable: fulltime, contract, temporary, internship
   return null;
 }
 
@@ -70,7 +72,7 @@ function buildSearchQueries({ goal, level, city, keywords = [], availability }) 
 
   const titleQuoted = title ? `"${title}"` : "";
 
-  // ----- Indeed UK (pin endpoint + strong params) -----
+  // ----- Indeed UK (co.uk) — stable + anti-rewrite params -----
   const indeedParts = [
     titleQuoted,
     ...syns,
@@ -88,8 +90,8 @@ function buildSearchQueries({ goal, level, city, keywords = [], availability }) 
   const l = place ? encodeURIComponent(place) : "";
   const jt = indeedJobTypeParam(availability);
 
-  // CHANGE 1: pin domain to uk.indeed.com and /jobs
-  const indeedBase = "https://uk.indeed.com/jobs";
+  // Stable UK endpoint (co.uk)
+  const indeedBase = "https://www.indeed.co.uk/jobs";
   const params = [
     `q=${indeedQ}`,
     l ? `l=${l}` : null,
@@ -97,7 +99,11 @@ function buildSearchQueries({ goal, level, city, keywords = [], availability }) 
     "sort=date",
     "fromage=7",
     jt ? `jt=${jt}` : null,
-    "vjk=", // harmless param; helps some redirects keep query (optional)
+    // Anti-rewrite stabilisers (harmless, help preserve query on redirects)
+    "vjk=",
+    "filter=0",
+    "wfh=0",
+    "start=0",
   ]
     .filter(Boolean)
     .join("&");
@@ -199,7 +205,7 @@ export default function LiveJobsLinks({
     >
       <div style={{ fontWeight: 600, marginBottom: 8 }}>{L.heading}</div>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-        {/* CHANGE 2: use plain <a> for external links */}
+        {/* External links use <a> for clean, direct navigation */}
         <a
           href={indeedHref}
           target="_blank"
