@@ -3,12 +3,10 @@
 
 import React, { useState, useMemo } from "react";
 
-// We use plain <a> for external links to avoid Next.js client-side routing side-effects.
-
+// ----- Helpers -----
 const UK_POSTCODE_REGEX =
   /\b([A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}|GIR ?0AA)\b/i;
 
-// ---- Small toggle chip (accessible) ----
 function ToggleChip({ active, onClick, children, bgOn = "#111827", bgOff = "#F3F4F6", lang = "en" }) {
   const dir = lang === "ar" ? "rtl" : "ltr";
   return (
@@ -34,7 +32,6 @@ function ToggleChip({ active, onClick, children, bgOn = "#111827", bgOff = "#F3F
 }
 
 function pickInitialRadius(place) {
-  // If it's a UK postcode → start Exact(0), else Nearby(10)
   if (!place) return 10;
   return UK_POSTCODE_REGEX.test(place) ? 0 : 10;
 }
@@ -42,10 +39,7 @@ function pickInitialRadius(place) {
 function levelTokens(level) {
   const lv = (level || "").toLowerCase();
   if (["new", "growing"].includes(lv)) {
-    return {
-      positives: ["junior", "trainee", "entry level"],
-      negatives: ["-senior", "-lead", "-manager"],
-    };
+    return { positives: ["junior", "trainee", "entry level"], negatives: ["-senior", "-lead", "-manager"] };
   }
   if (["established", "advancing"].includes(lv)) {
     return { positives: ["experienced"], negatives: [] };
@@ -56,24 +50,18 @@ function levelTokens(level) {
 function roleSynonyms(title) {
   const t = (title || "").toLowerCase();
   const out = [];
-  if (t.includes("customer service")) {
-    out.push("customer support", "customer care", "contact centre", "call centre");
-  }
-  if (t.includes("advisor") || t.includes("agent")) {
-    out.push("agent", "advisor");
-  }
+  if (t.includes("customer service")) out.push("customer support", "customer care", "contact centre", "call centre");
+  if (t.includes("advisor") || t.includes("agent")) out.push("agent", "advisor");
   return out;
 }
 
 function availabilityTerms(availability) {
   const terms = [];
-  const contract = (availability?.contract || "").toLowerCase();
+  const c = (availability?.contract || "").toLowerCase();
   const times = availability?.times || {};
-
-  if (contract === "part_time") terms.push("part time");
-  if (contract === "weekends") terms.push("weekend");
-  if (contract === "any") terms.push("flexible");
-
+  if (c === "part_time") terms.push("part time");
+  if (c === "weekends") terms.push("weekend");
+  if (c === "any") terms.push("flexible");
   if (times?.evening) terms.push("evening");
   if (times?.morning) terms.push("morning");
   if (times?.afternoon) terms.push("afternoon");
@@ -85,16 +73,13 @@ function availabilitySummary(availability, lang) {
   const c = (availability.contract || "").toLowerCase();
   const t = availability.times || {};
   const parts = [];
-
   if (c === "part_time") parts.push(lang === "ar" ? "دوام جزئي" : "PT");
   else if (c === "weekends") parts.push(lang === "ar" ? "عطلات" : "Weekends");
   else if (c === "full_time") parts.push(lang === "ar" ? "دوام كامل" : "FT");
   else if (c === "any") parts.push(lang === "ar" ? "مرن" : "Flexible");
-
   if (t.morning) parts.push(lang === "ar" ? "صباح" : "Morning");
   if (t.afternoon) parts.push(lang === "ar" ? "بعد الظهر" : "Afternoon");
   if (t.evening) parts.push(lang === "ar" ? "مساء" : "Evening");
-
   return parts.join(lang === "ar" ? " · " : " · ");
 }
 
@@ -104,9 +89,7 @@ function indeedJobTypeParam(availability) {
   return null;
 }
 
-/**
- * Build the Indeed UK link and a user-facing suggestion string.
- */
+/** Build a robust, non-empty suggestion and an Indeed UK link. */
 function buildIndeed({ goal, level, city, keywords = [], availability, radiusMiles, freshnessDays }) {
   const title = (goal || "").trim();
   const place = (city || "").trim();
@@ -116,14 +99,20 @@ function buildIndeed({ goal, level, city, keywords = [], availability, radiusMil
   const skills = (keywords || []).slice(0, 5);
   const avail = availabilityTerms(availability);
 
-  const titleQuoted = title ? `"${title}"` : "";
-  const suggestionParts = [titleQuoted, ...syns, ...skills, ...lvlPos, ...lvlNeg, ...avail].filter(Boolean);
-  const suggestionText = suggestionParts.join(" ").replace(/\s+/g, " ").trim();
+  // Build a clean suggestion WITHOUT quotes to avoid empty/invalid q
+  const parts = [title, ...syns, ...skills, ...lvlPos, ...lvlNeg, ...avail]
+    .map(s => String(s || "").trim())
+    .filter(Boolean);
+
+  // Fallbacks to guarantee q is never empty
+  const fallback = title || "customer service";
+  const suggestionText = (parts.join(" ").replace(/\s+/g, " ").trim()) || fallback;
 
   const indeedQ = encodeURIComponent(suggestionText);
   const l = place ? encodeURIComponent(place) : "";
   const jt = indeedJobTypeParam(availability);
 
+  // ✅ Force the stable UK endpoint
   const indeedBase = "https://www.indeed.co.uk/jobs";
   const params = [
     `q=${indeedQ}`,
@@ -137,12 +126,12 @@ function buildIndeed({ goal, level, city, keywords = [], availability, radiusMil
     "filter=0",
     "wfh=0",
     "start=0",
-  ]
-    .filter(Boolean)
-    .join("&");
+  ].filter(Boolean).join("&");
 
-  const indeedHref = `${indeedBase}?${params}`;
-  return { indeedHref, suggestionText };
+  return {
+    indeedHref: `${indeedBase}?${params}`,
+    suggestionText,
+  };
 }
 
 export default function LiveJobsLinks({
@@ -160,7 +149,6 @@ export default function LiveJobsLinks({
   const [radius, setRadius] = useState(initialRadius);    // 0 / 5 / 10 / 25
   const [freshness, setFreshness] = useState(7);          // 1 / 3 / 7 / 14
 
-  // Build Indeed link + suggestion
   const { indeedHref, suggestionText } = useMemo(
     () =>
       buildIndeed({
@@ -235,7 +223,6 @@ export default function LiveJobsLinks({
 
   const availText = availabilitySummary(availability, language);
   const [copied, setCopied] = useState(false);
-
   async function doCopy() {
     try {
       await navigator.clipboard.writeText(suggestionText || "");
