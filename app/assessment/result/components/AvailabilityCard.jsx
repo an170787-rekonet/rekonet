@@ -220,7 +220,7 @@ export default function AvailabilityCard({
           </div>
 
           {/* Contract + travel + date */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginTop: 12 }}>
+   <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr 0.8fr", gap: 12, marginTop: 12 }}>
             {/* Contract */}
             <div>
               <div style={{ fontSize: 12, color: "#374151", marginBottom: 6 }}>
