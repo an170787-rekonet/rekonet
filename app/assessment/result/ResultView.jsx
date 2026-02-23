@@ -451,7 +451,7 @@ export default function ResultView({ assessmentId, language, userId = null }) {
             marginTop: 12,
             marginBottom: 20, // spacing before experience row
             padding: 12,
-            border: '1px solid '#e5e7eb',
+            border: '1px solid #e5e7eb',
             borderRadius: 8,
             background: '#fff',
           }}
