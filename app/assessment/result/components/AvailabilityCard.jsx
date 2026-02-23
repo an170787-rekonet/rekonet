@@ -18,6 +18,10 @@ export default function AvailabilityCard({ language = "en", onSave }) {
   const [travel, setTravel] = useState(30);
   const [startDate, setStartDate] = useState("");
 
+  // NEW: UX feedback
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+
   const L = {
     heading: { en: "Availability", ar: "التوفر" },
     days: { en: "Days you can work", ar: "الأيام المتاحة للعمل" },
@@ -26,6 +30,8 @@ export default function AvailabilityCard({ language = "en", onSave }) {
     travel: { en: "Max travel time (minutes)", ar: "الحد الأقصى لوقت التنقل (بالدقائق)" },
     start: { en: "Earliest start date", ar: "أقرب تاريخ للبدء" },
     save: { en: "Save availability", ar: "حفظ التوفر" },
+    saved: { en: "Saved.", ar: "تم الحفظ." },
+    error: { en: "Could not save.", ar: "تعذر الحفظ." },
     ft: { en: "Full‑time", ar: "دوام كامل" },
     pt: { en: "Part‑time", ar: "دوام جزئي" },
     wk: { en: "Weekends only", ar: "عطلة نهاية الأسبوع فقط" },
@@ -35,14 +41,29 @@ export default function AvailabilityCard({ language = "en", onSave }) {
   const toggleDay = (d) => setDays({ ...days, [d]: !days[d] });
   const toggleTime = (t) => setTimes({ ...times, [t]: !times[t] });
 
-  const save = () => {
-    onSave?.({
-      days,
-      times,
-      contract,
-      travelMinutes: Number(travel),
-      earliestStart: startDate
-    });
+  const save = async () => {
+    try {
+      setBusy(true);
+      setMsg("");
+      // Build payload
+      const payload = {
+        days,
+        times,
+        contract,
+        travelMinutes: Number(travel),
+        earliestStart: startDate
+      };
+      // Await parent onSave (this calls your API)
+      await onSave?.(payload);
+      setMsg(L.saved[language]);
+      // Hide the message after a short delay
+      setTimeout(() => setMsg(""), 3000);
+    } catch (e) {
+      console.error(e);
+      setMsg(L.error[language]);
+    } finally {
+      setBusy(false);
+    }
   };
 
   const chip = {
@@ -145,19 +166,32 @@ export default function AvailabilityCard({ language = "en", onSave }) {
 
       <button
         onClick={save}
+        disabled={busy}
         style={{
           marginTop: 16,
           padding: "8px 12px",
-          background: "#2563EB",
+          background: busy ? "#9CA3AF" : "#2563EB",
           color: "#fff",
           borderRadius: 8,
           border: "none",
           fontWeight: 600,
-          cursor: "pointer"
+          cursor: busy ? "not-allowed" : "pointer"
         }}
       >
-        {L.save[language]}
+        {busy ? (language === "ar" ? "جارٍ الحفظ…" : "Saving…") : L.save[language]}
       </button>
+
+      {msg && (
+        <div
+          style={{
+            marginTop: 8,
+            fontSize: 12,
+            color: msg === L.saved[language] ? "#166534" : "#B91C1C"
+          }}
+        >
+          {msg}
+        </div>
+      )}
     </section>
   );
 }
