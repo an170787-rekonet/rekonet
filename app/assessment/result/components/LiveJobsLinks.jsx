@@ -1,16 +1,40 @@
 // app/assessment/result/components/LiveJobsLinks.jsx
 "use client";
 
-// NOTE: External links use a plain <a> to avoid Next.js client-side routing side-effects.
-// import Link from "next/link"; // not needed
+// We use plain <a> for external links to avoid Next.js client-side routing side-effects.
 
-// Detect common UK postcode patterns
 const UK_POSTCODE_REGEX =
   /\b([A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}|GIR ?0AA)\b/i;
 
-function pickRadius(place) {
-  if (!place) return null;
-  return UK_POSTCODE_REGEX.test(place) ? 0 : 10; // exact for postcodes, wider for towns
+// ---- Small toggle chip (accessible) ----
+function ToggleChip({ active, onClick, children, bgOn = "#111827", bgOff = "#F3F4F6", lang = "en" }) {
+  const dir = lang === "ar" ? "rtl" : "ltr";
+  return (
+    <button
+      type="button"
+      aria-pressed={!!active}
+      onClick={onClick}
+      dir={dir}
+      style={{
+        padding: "6px 10px",
+        borderRadius: 999,
+        border: "1px solid #E5E7EB",
+        background: active ? bgOn : bgOff,
+        color: active ? "#fff" : "#1F2937",
+        fontWeight: 600,
+        fontSize: 12,
+        cursor: "pointer",
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function pickInitialRadius(place) {
+  // If it's a UK postcode → start Exact(0), else Nearby(10)
+  if (!place) return 10;
+  return UK_POSTCODE_REGEX.test(place) ? 0 : 10;
 }
 
 function levelTokens(level) {
@@ -54,14 +78,36 @@ function availabilityTerms(availability) {
   return terms;
 }
 
+function availabilitySummary(availability, lang) {
+  if (!availability) return "";
+  const c = (availability.contract || "").toLowerCase();
+  const t = availability.times || {};
+  const parts = [];
+
+  if (c === "part_time") parts.push(lang === "ar" ? "دوام جزئي" : "PT");
+  else if (c === "weekends") parts.push(lang === "ar" ? "عطلات" : "Weekends");
+  else if (c === "full_time") parts.push(lang === "ar" ? "دوام كامل" : "FT");
+  else if (c === "any") parts.push(lang === "ar" ? "مرن" : "Flexible");
+
+  if (t.morning) parts.push(lang === "ar" ? "صباح" : "Morning");
+  if (t.afternoon) parts.push(lang === "ar" ? "بعد الظهر" : "Afternoon");
+  if (t.evening) parts.push(lang === "ar" ? "مساء" : "Evening");
+
+  return parts.join(lang === "ar" ? " · " : " · ");
+}
+
 function indeedJobTypeParam(availability) {
   const c = (availability?.contract || "").toLowerCase();
   if (c === "part_time") return "parttime";
-  // extendable: fulltime, contract, temporary, internship
+  // extendable: fulltime, temporary, contract, internship
   return null;
 }
 
-function buildSearchQueries({ goal, level, city, keywords = [], availability }) {
+/**
+ * Build outbound search links for Indeed UK, company careers via Google operators,
+ * and a general Google Jobs-leaning search, with radius & freshness controls.
+ */
+function buildSearchQueries({ goal, level, city, keywords = [], availability, radiusMiles, freshnessDays }) {
   const title = (goal || "").trim();
   const place = (city || "").trim();
 
@@ -72,7 +118,7 @@ function buildSearchQueries({ goal, level, city, keywords = [], availability }) 
 
   const titleQuoted = title ? `"${title}"` : "";
 
-  // ----- Indeed UK (co.uk) — stable + anti-rewrite params -----
+  // ----- Indeed UK (co.uk) -----
   const indeedParts = [
     titleQuoted,
     ...syns,
@@ -86,20 +132,18 @@ function buildSearchQueries({ goal, level, city, keywords = [], availability }) 
     (indeedParts.length ? indeedParts : [titleQuoted]).join(" ").trim()
   );
 
-  const radius = pickRadius(place);
   const l = place ? encodeURIComponent(place) : "";
   const jt = indeedJobTypeParam(availability);
 
-  // Stable UK endpoint (co.uk)
   const indeedBase = "https://www.indeed.co.uk/jobs";
   const params = [
     `q=${indeedQ}`,
     l ? `l=${l}` : null,
-    radius != null ? `radius=${radius}` : null,
+    Number.isFinite(radiusMiles) ? `radius=${radiusMiles}` : null,
     "sort=date",
-    "fromage=7",
+    Number.isFinite(freshnessDays) ? `fromage=${freshnessDays}` : "fromage=7",
     jt ? `jt=${jt}` : null,
-    // Anti-rewrite stabilisers (harmless, help preserve query on redirects)
+    // Anti-rewrite stabilisers
     "vjk=",
     "filter=0",
     "wfh=0",
@@ -132,7 +176,7 @@ function buildSearchQueries({ goal, level, city, keywords = [], availability }) 
     careersTerms
   )}`;
 
-  // ----- Google jobs-leaning search -----
+  // ----- General Google Jobs-leaning search -----
   const googleTerms = [
     titleQuoted,
     place ? `"${place}"` : "",
@@ -160,12 +204,22 @@ export default function LiveJobsLinks({
   language = "en",
   availability,
 }) {
+  const dir = language === "ar" ? "rtl" : "ltr";
+
+  // ---- Chips state: initialise from postcode logic & sensible defaults ----
+  const initialRadius = pickInitialRadius(city);
+  const [radius, setRadius] = useState(initialRadius);    // 0 / 5 / 10 / 25
+  const [freshness, setFreshness] = useState(7);          // 1 / 3 / 7 / 14
+
+  // ---- Build links with current selections ----
   const { indeedHref, careersHref, googleHref } = buildSearchQueries({
     goal,
     level,
     city,
     keywords,
     availability,
+    radiusMiles: radius,
+    freshnessDays: freshness,
   });
 
   const L =
@@ -175,12 +229,34 @@ export default function LiveJobsLinks({
         indeed: "Indeed (UK)",
         careers: "Company career pages",
         google: "Google (jobs)",
+        radius: "Radius",
+        freshness: "Freshness",
+        rExact: "Exact",
+        rLocal: "Local",
+        rNear: "Nearby",
+        rCity: "City‑wide",
+        d1: "1d",
+        d3: "3d",
+        d7: "7d",
+        d14: "14d",
+        avail: "Availability",
       },
       ar: {
         heading: "اعثر على وظائف مباشرة",
         indeed: "بحث Indeed (المملكة المتحدة)",
         careers: "صفحات وظائف الشركات",
         google: "بحث Google (وظائف)",
+        radius: "المسافة",
+        freshness: "الحداثة",
+        rExact: "دقيق",
+        rLocal: "محلي",
+        rNear: "بالقرب",
+        rCity: "على مستوى المدينة",
+        d1: "يوم",
+        d3: "3 أيام",
+        d7: "7 أيام",
+        d14: "14 يومًا",
+        avail: "التوفر",
       },
     }[language] ||
     {
@@ -188,9 +264,20 @@ export default function LiveJobsLinks({
       indeed: "Indeed (UK)",
       careers: "Company career pages",
       google: "Google (jobs)",
+      radius: "Radius",
+      freshness: "Freshness",
+      rExact: "Exact",
+      rLocal: "Local",
+      rNear: "Nearby",
+      rCity: "City‑wide",
+      d1: "1d",
+      d3: "3d",
+      d7: "7d",
+      d14: "14d",
+      avail: "Availability",
     };
 
-  const dir = language === "ar" ? "rtl" : "ltr";
+  const availText = availabilitySummary(availability, language);
 
   return (
     <div
@@ -204,8 +291,37 @@ export default function LiveJobsLinks({
       }}
     >
       <div style={{ fontWeight: 600, marginBottom: 8 }}>{L.heading}</div>
+
+      {/* Controls row */}
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10, marginBottom: 8 }}>
+        {/* Radius */}
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ fontSize: 12, color: "#475569", minWidth: 58 }}>{L.radius}:</span>
+          <ToggleChip lang={language} active={radius === 0} onClick={() => setRadius(0)}>{L.rExact}</ToggleChip>
+          <ToggleChip lang={language} active={radius === 5} onClick={() => setRadius(5)}>{L.rLocal}</ToggleChip>
+          <ToggleChip lang={language} active={radius === 10} onClick={() => setRadius(10)}>{L.rNear}</ToggleChip>
+          <ToggleChip lang={language} active={radius === 25} onClick={() => setRadius(25)}>{L.rCity}</ToggleChip>
+        </div>
+
+        {/* Freshness */}
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ fontSize: 12, color: "#475569", minWidth: 66 }}>{L.freshness}:</span>
+          <ToggleChip lang={language} active={freshness === 1} onClick={() => setFreshness(1)}>{L.d1}</ToggleChip>
+          <ToggleChip lang={language} active={freshness === 3} onClick={() => setFreshness(3)}>{L.d3}</ToggleChip>
+          <ToggleChip lang={language} active={freshness === 7} onClick={() => setFreshness(7)}>{L.d7}</ToggleChip>
+          <ToggleChip lang={language} active={freshness === 14} onClick={() => setFreshness(14)}>{L.d14}</ToggleChip>
+        </div>
+
+        {/* Availability summary */}
+        {availText ? (
+          <div style={{ marginInlineStart: "auto", fontSize: 12, color: "#334155" }}>
+            <span style={{ opacity: 0.7 }}>{L.avail}: </span>{availText}
+          </div>
+        ) : null}
+      </div>
+
+      {/* Links row */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-        {/* External links use <a> for clean, direct navigation */}
         <a
           href={indeedHref}
           target="_blank"
@@ -250,3 +366,6 @@ function chipStyle(bg) {
     fontWeight: 600,
   };
 }
+
+// Minimal React import because we're in a client component
+import React, { useState } from "react";
