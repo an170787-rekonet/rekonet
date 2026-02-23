@@ -445,9 +445,32 @@ export default function ResultView({ assessmentId, language, userId = null }) {
   }, [assessmentId]);
 
   const handleSaveAvailability = useCallback(async (value) => {
-    try {
-      setSavingAvail(true);
-      setErrorAvail('');
+  try {
+    setSavingAvail(true);
+    setErrorAvail("");
+
+    const res = await fetch(`/api/availability/${assessmentId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(value),
+    });
+
+    const json = await res.json();
+
+    // If the API signalled an error, show it verbatim
+    if (!res.ok || json?.error) {
+      throw new Error(json?.error || `Save failed (${res.status})`);
+    }
+
+    // Success: reflect saved value in state
+    setAvailability(json?.data || value);
+  } catch (e) {
+    // Now we surface the real server message (not a generic one)
+    setErrorAvail(e?.message || "Could not save availability.");
+  } finally {
+    setSavingAvail(false);
+  }
+}, [assessmentId]);
       const res = await fetch(`/api/availability/${assessmentId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
