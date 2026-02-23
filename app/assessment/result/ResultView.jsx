@@ -215,6 +215,9 @@ export default function ResultView({ assessmentId, language, userId = null }) {
   const [goalPlan, setGoalPlan] = useState(null);
   const [city, setCity] = useState('');
 
+// Availability (PR‑5)
+const [availability, setAvailability] = useState(null);
+
   // CV summary (top keywords/sectors for links & heuristics)
   const [cvSummary, setCvSummary] = useState(null);
 
