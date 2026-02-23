@@ -370,15 +370,15 @@ export default function ResultView({ assessmentId, language, userId = null }) {
 
         {item.why && <p style={{ color: '#444', margin: '8px 0 4px' }}>{item.why}</p>}
 
-        {/* Show Live Job Links for this role */}
-        <LiveJobsLinks
-          goal={item.title}
-          level={experienceStage}
-          city={city}
-          keywords={cvSummary?.topKeywords || []}
-          language={language}
-        />
-
+       {/* Show Live Job Links for this role */}
+<LiveJobsLinks
+  goal={item.title}
+  level={experienceStage}
+  city={city}
+  keywords={cvSummary?.topKeywords || []}
+  language={language}
+  availability={availability}   // <-- add this line
+/>
         {/* Optional gaps */}
         {Array.isArray(item.gaps) && item.gaps.length > 0 && (
           <ul style={{ color: '#555', margin: '6px 0 0 16px' }}>
