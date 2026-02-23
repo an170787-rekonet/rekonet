@@ -563,18 +563,17 @@ export default function ResultView({ assessmentId, language, userId = null }) {
         onResult={(data) => setGoalPlan(data)}
       />
 
-      {/* Goal results panel */}
-      {goalPlan && goalPlan.ok ? (
-        <section
-          dir={language === 'ar' ? 'rtl' : 'ltr'}
-          style={{
-            marginTop: 12,
-            padding: 12,
-            border: '1px solid #e5e7eb',
-            borderRadius: 8,
-            background: '#fff'
-          }}
-        >
+      <section
+  dir={language === 'ar' ? 'rtl' : 'ltr'}
+  style={{
+    marginTop: 12,
+    marginBottom: 20,   // ← add this line
+    padding: 12,
+    border: '1px solid #e5e7eb',
+    borderRadius: 8,
+    background: '#fff'
+  }}
+>
           <h3 style={{ marginTop: 0 }}>
             {(goalL.panelTitle[language] || goalL.panelTitle.en)} — {goalPlan.goal}
           </h3>
