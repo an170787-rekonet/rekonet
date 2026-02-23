@@ -1,10 +1,9 @@
 // app/api/cv/parse/route.js
 
-// Ensure this API runs on Node (not Edge), because we use the Supabase server client.
+// Force Node runtime for this API (not Edge)
 export const runtime = 'nodejs';
 
-// Import your server Supabase helper (we created this earlier).
-// From app/api/cv/parse/route.js → ../../_lib/supabase
+// IMPORTANT: from app/api/cv/parse/route.js → ../../_lib/supabase  (two levels up)
 import { createServerClient } from '../../_lib/supabase';
 
 // ---------- helpers ----------
@@ -18,14 +17,12 @@ function topN(map, n = 7) {
 function extractSignals(rawText = '') {
   const text = (rawText || '').toLowerCase();
 
-  // Keep it simple for v1 (matches your seeded sectors).
   const keywordBank = [
     'customer service','complaints','crm','call centre','contact centre',
     'ms office','excel','filing','data entry','scheduling','records',
     'picking','packing','picking list','packing list','inventory'
   ];
 
-  // Count occurrences
   const freq = {};
   for (const kw of keywordBank) {
     const pattern = new RegExp(`\\b${kw.replace(/\s+/g, '\\s+')}\\b`, 'gi');
@@ -33,7 +30,6 @@ function extractSignals(rawText = '') {
     if (count > 0) freq[kw] = count;
   }
 
-  // Sector scores (very light heuristic for v1)
   const sectors = {
     customer_service: ['customer service','complaints','crm','call centre','contact centre'],
     admin: ['filing','data entry','ms office','excel','scheduling','records'],
@@ -76,7 +72,7 @@ export async function POST(req) {
       user_id = String(form.get('user_id') || '');
       language = String(form.get('language') || '');
       assessment_id = String(form.get('assessment_id') || '');
-      // (Optional) handle uploaded file later
+      // Optional: handle uploaded file later
       // const file = form.get('file'); // Blob
     } else {
       return new Response(JSON.stringify({ ok: false, error: 'Unsupported content-type' }), {
@@ -129,7 +125,7 @@ export async function POST(req) {
   }
 }
 
-// Simple GET to verify the route is alive from a browser
+// GET handler so you can test the route in a browser
 export async function GET() {
   return new Response(JSON.stringify({ ok: true, alive: true }), {
     status: 200,
