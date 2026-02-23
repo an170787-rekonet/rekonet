@@ -5,35 +5,49 @@ import Link from "next/link";
 
 /**
  * Build outbound search links for Indeed, company careers (via Google operators),
- * and general Google Jobs from goal + level + city + keywords.
- * These links simply open searches in new tabs. No scraping.
+ * and general Google Jobs, enriched with availability signals (part-time, evening, weekend, flexible).
+ * We only open searches in new tabs. No scraping.
  */
-function buildSearchQueries({ goal, level, city, keywords = [] }) {
+function buildSearchQueries({ goal, level, city, keywords = [], availability }) {
   const title = (goal || "").trim();
   const place = (city || "").trim();
 
-  // Level handling (seniority filter)
+  // Seniority control
   const lowLevel = ["new", "growing"].includes((level || "").toLowerCase());
   const seniorFilter = lowLevel ? "-senior -lead -manager" : "";
 
-  // Keywords: keep top 3-5
+  // Keywords: keep top 3–5
   const topKw = (keywords || []).slice(0, 5).join(" ");
 
-  // 1) Indeed search URL: q = title + keywords + senior filter, l = city
+  // Availability-derived terms
+  const availTerms = [];
+  const contract = (availability?.contract || "").toLowerCase();
+  const times = availability?.times || {};
+
+  if (contract === "part_time") availTerms.push("part time");
+  if (contract === "weekends") availTerms.push("weekend");
+  if (contract === "any") availTerms.push("flexible");
+
+  if (times?.evening) availTerms.push("evening");
+  if (times?.morning) availTerms.push("morning");
+  if (times?.afternoon) availTerms.push("afternoon");
+
+  const availText = availTerms.join(" ");
+
+  // 1) Indeed search
   const indeedQuery = encodeURIComponent(
-    [title, topKw, seniorFilter].filter(Boolean).join(" ")
+    [title, topKw, seniorFilter, availText].filter(Boolean).join(" ")
   );
   const indeedLoc = encodeURIComponent(place);
   const indeedHref = `https://www.indeed.com/jobs?q=${indeedQuery}${
     indeedLoc ? `&l=${indeedLoc}` : ""
   }`;
 
-  // 2) Company careers (Workday, Greenhouse, Lever)
-  // Uses Google search operators
+  // 2) Company careers (Workday / Greenhouse / Lever) via Google operators
   const careersOps = [
     "site:workdayjobs.com",
     "site:greenhouse.io",
-    "site:lever.co"
+    "site:lever.co",
   ].join(" OR ");
 
   const careersTerms = [
@@ -41,7 +55,8 @@ function buildSearchQueries({ goal, level, city, keywords = [] }) {
     `"${title}"`,
     place ? `"${place}"` : "",
     topKw,
-    seniorFilter
+    availText,
+    seniorFilter,
   ]
     .filter(Boolean)
     .join(" ");
@@ -55,8 +70,9 @@ function buildSearchQueries({ goal, level, city, keywords = [] }) {
     `"${title}"`,
     place ? `"${place}"` : "",
     topKw,
+    availText,
     seniorFilter,
-    "jobs"
+    "jobs",
   ]
     .filter(Boolean)
     .join(" ");
@@ -73,13 +89,15 @@ export default function LiveJobsLinks({
   level,
   city,
   keywords = [],
-  language = "en"
+  language = "en",
+  availability, // <-- NEW
 }) {
   const { indeedHref, careersHref, googleHref } = buildSearchQueries({
     goal,
     level,
     city,
-    keywords
+    keywords,
+    availability,
   });
 
   const L =
@@ -88,20 +106,20 @@ export default function LiveJobsLinks({
         heading: "Find live jobs",
         indeed: "Indeed search",
         careers: "Company career pages",
-        google: "Google Jobs"
+        google: "Google Jobs",
       },
       ar: {
         heading: "اعثر على وظائف مباشرة",
         indeed: "بحث Indeed",
         careers: "صفحات وظائف الشركات",
-        google: "وظائف Google"
-      }
+        google: "وظائف Google",
+      },
     }[language] ||
     {
       heading: "Find live jobs",
       indeed: "Indeed search",
       careers: "Company career pages",
-      google: "Google Jobs"
+      google: "Google Jobs",
     };
 
   const dir = language === "ar" ? "rtl" : "ltr";
@@ -113,11 +131,11 @@ export default function LiveJobsLinks({
         marginTop: 12,
         border: "1px solid #eee",
         borderRadius: 8,
-        padding: 10
+        padding: 10,
+        background: "#fff",
       }}
     >
       <div style={{ fontWeight: 600, marginBottom: 8 }}>{L.heading}</div>
-
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
         <Link
           href={indeedHref}
@@ -127,7 +145,6 @@ export default function LiveJobsLinks({
         >
           {L.indeed}
         </Link>
-
         <Link
           href={careersHref}
           target="_blank"
@@ -136,7 +153,6 @@ export default function LiveJobsLinks({
         >
           {L.careers}
         </Link>
-
         <Link
           href={googleHref}
           target="_blank"
@@ -162,6 +178,6 @@ function chipStyle(bg) {
     textDecoration: "none",
     color: "#1F2937",
     fontSize: 12,
-    fontWeight: 600
+    fontWeight: 600,
   };
 }
