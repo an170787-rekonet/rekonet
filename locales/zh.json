@@ -1,0 +1,10 @@
+{
+  "interview": {
+    "title": "面试模拟器",
+    "intro": "请使用 STAR 方法作答。",
+    "submit": "提交答案",
+    "score": "你的得分",
+    "hint_star": "STAR = 情景、任务、行动、结果 —— 请简要说明。",
+    "guidance_en_only": "题目将保持英文，但说明以你的语言呈现。"
+  }
+}
