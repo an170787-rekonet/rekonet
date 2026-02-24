@@ -1,0 +1,10 @@
+{
+  "interview": {
+    "title": "Simulador de entrevista",
+    "intro": "Responda usando o método STAR.",
+    "submit": "Enviar respostas",
+    "score": "A sua pontuação",
+    "hint_star": "STAR = Situação, Tarefa, Ação, Resultado — explique brevemente.",
+    "guidance_en_only": "As perguntas ficam em inglês, mas as instruções estão no seu idioma."
+  }
+}
