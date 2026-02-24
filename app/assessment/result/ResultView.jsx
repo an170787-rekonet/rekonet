@@ -90,7 +90,10 @@ function ExperienceForm({ userId, language = 'en', onSaved }) {
     try {
       const { error } = await supabase
         .from('experience_evidence')
-        .upsert([{ user_id: userId, domain, months: Number(months) }], { onConflict: 'user_id,domain' });
+        .upsert(
+          [{ user_id: userId, domain, months: Number(months) }],
+          { onConflict: 'user_id,domain' }
+        );
       if (error) throw error;
       setMsg('Saved.');
       onSaved?.();
@@ -265,7 +268,10 @@ function enhanceRoles({
   place = '',
 }) {
   const kwSet = new Set((cvTopKeywords || []).map((k) => String(k).toLowerCase()));
-  const levelBoost = experienceStage === 'Seasoned' ? 2 : experienceStage === 'Solid' ? 1.5 : experienceStage === 'Growing' ? 1.25 : 1;
+  const levelBoost =
+    experienceStage === 'Seasoned' ? 2 :
+    experienceStage === 'Solid'    ? 1.5 :
+    experienceStage === 'Growing'  ? 1.25 : 1;
 
   function keywordScore(title, why, gaps) {
     // Rebalanced weights + cap to avoid over‑boosting
@@ -297,8 +303,8 @@ function enhanceRoles({
     score += kw;
 
     // PR‑6 additions
-    const availB = availabilityBoostForTitle(role?.title, availability);            // availability
-    const proxB  = proximityBoostForTitle(role?.title, place, availability);        // travel proximity
+    const availB = availabilityBoostForTitle(role?.title, availability);     // availability
+    const proxB  = proximityBoostForTitle(role?.title, place, availability); // travel proximity
     score += availB + proxB;
 
     // level as the final multiplier
@@ -307,15 +313,19 @@ function enhanceRoles({
     return { score, availB, proxB, kw };
   }
 
-  const ready = [...readyNow].map((r) => {
-    const s = scoreRole(r);
-    return { ...r, _enhScore: s.score, _availabilityBoost: s.availB, _proximityBoost: s.proxB, _kwScore: s.kw, _variant: 'ready' };
-  }).sort((a, b) => b._enhScore - a._enhScore);
+  const ready = [...readyNow]
+    .map((r) => {
+      const s = scoreRole(r);
+      return { ...r, _enhScore: s.score, _availabilityBoost: s.availB, _proximityBoost: s.proxB, _kwScore: s.kw, _variant: 'ready' };
+    })
+    .sort((a, b) => b._enhScore - a._enhScore);
 
-  const bridges = [...bridgeRoles].map((r) => {
-    const s = scoreRole(r);
-    return { ...r, _enhScore: s.score, _availabilityBoost: s.availB, _proximityBoost: s.proxB, _kwScore: s.kw, _variant: 'bridge' };
-  }).sort((a, b) => b._enhScore - a._enhScore);
+  const bridges = [...bridgeRoles]
+    .map((r) => {
+      const s = scoreRole(r);
+      return { ...r, _enhScore: s.score, _availabilityBoost: s.availB, _proximityBoost: s.proxB, _kwScore: s.kw, _variant: 'bridge' };
+    })
+    .sort((a, b) => b._enhScore - a._enhScore);
 
   return { ready, bridges };
 }
@@ -390,7 +400,10 @@ export default function ResultView({ assessmentId, language, userId = null }) {
     if (!userId) { setCvSummary(null); return; }
     (async () => {
       try {
-        const r = await fetch(`/api/cv/summary?user_id=${encodeURIComponent(userId)}&language=${encodeURIComponent((language || 'en').toLowerCase())}`, { cache: 'no-store' });
+        const r = await fetch(
+          `/api/cv/summary?user_id=${encodeURIComponent(userId)}&language=${encodeURIComponent((language || 'en').toLowerCase())}`,
+          { cache: 'no-store' }
+        );
         const j = await r.json();
         if (on) setCvSummary(j?.ok ? j : null);
       } catch {
@@ -445,46 +458,50 @@ export default function ResultView({ assessmentId, language, userId = null }) {
   }, [assessmentId]);
 
   const handleSaveAvailability = useCallback(async (value) => {
-  try {
+    // Optional: prevent double submit
+    if (savingAvail) return false;
+
     setSavingAvail(true);
-    setErrorAvail("");
+    setErrorAvail('');
 
-    const res = await fetch(`/api/availability/${assessmentId}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(value),
-    });
-
-    const json = await res.json();
-
-    // If the API signalled an error, show it verbatim
-    if (!res.ok || json?.error) {
-      throw new Error(json?.error || `Save failed (${res.status})`);
-    }
-
-    // Success: reflect saved value in state
-    setAvailability(json?.data || value);
-  } catch (e) {
-    // Now we surface the real server message (not a generic one)
-    setErrorAvail(e?.message || "Could not save availability.");
-  } finally {
-    setSavingAvail(false);
-  }
-}, [assessmentId]);
+    try {
       const res = await fetch(`/api/availability/${assessmentId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(value),
       });
-      const json = await res.json();
-      if (json?.error) throw new Error(json.error);
-      setAvailability(json?.data || value);
+
+      // Try to parse JSON either way so we can surface server messages
+      let data = null;
+      try {
+        data = await res.json();
+      } catch {
+        // no JSON body; that's fine
+      }
+
+      if (!res.ok) {
+        const msg =
+          (data && (data.error || data.message)) ||
+          `Failed to save availability (HTTP ${res.status})`;
+        throw new Error(msg);
+      }
+
+      // Reflect server-returned availability (fallback to sent value)
+      if (data && data.data !== undefined) {
+        setAvailability(data.data);
+      } else {
+        setAvailability(value);
+      }
+
+      return true;
     } catch (e) {
-      setErrorAvail('Could not save availability.');
+      console.error(e);
+      setErrorAvail(e?.message || 'Failed to save availability.');
+      return false;
     } finally {
       setSavingAvail(false);
     }
-  }, [assessmentId]);
+  }, [assessmentId, savingAvail]);
 
   /* ---------- loading guards ---------- */
   if (loading) return <main style={{ padding: 24 }}>Loading…</main>;
