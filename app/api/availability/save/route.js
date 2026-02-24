@@ -1,34 +1,33 @@
 // app/api/availability/save/route.js
 import { NextResponse } from "next/server";
-import { supabase } from "../../../../lib/supabaseClient";
+import { createClient } from "@/lib/supabaseClient";
 
 export async function POST(req) {
   try {
+    const supabase = createClient();
     const body = await req.json();
-    const { userId, availability } = body;
 
-    if (!userId) {
-      return NextResponse.json({ ok: false, error: "Missing userId" }, { status: 400 });
-    }
-
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("availability")
-      .upsert(
-        {
-          user_id: userId,
-          data: availability,
-          updated_at: new Date().toISOString()
-        },
-        { onConflict: "user_id" }
-      );
+      .upsert(body)
+      .select()
+      .single();
 
     if (error) {
-      console.error("Save availability error:", error);
-      return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+      return NextResponse.json(
+        { ok: false, data: null, error: error.message },
+        { status: 400 }
+      );
     }
 
-    return NextResponse.json({ ok: true });
-  } catch (e) {
-    return NextResponse.json({ ok: false, error: e.message }, { status: 500 });
+    return NextResponse.json(
+      { ok: true, data, error: null },
+      { status: 200 }
+    );
+  } catch (err) {
+    return NextResponse.json(
+      { ok: false, data: null, error: "Unexpected server error" },
+      { status: 500 }
+    );
   }
 }
