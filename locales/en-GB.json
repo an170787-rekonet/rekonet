@@ -11,6 +11,7 @@
     "saved": "Saved",
     "validation_days": "Please select at least one working day."
   },
+
   "days": {
     "mon": "MON",
     "tue": "TUE",
@@ -20,15 +21,26 @@
     "sat": "SAT",
     "sun": "SUN"
   },
+
   "times": {
     "morning": "morning",
     "afternoon": "afternoon",
     "evening": "evening"
   },
+
   "contract": {
     "full_time": "Full-time",
     "part_time": "Part-time",
     "weekends": "Weekends",
     "any": "Any / flexible"
+  },
+
+  "interview": {
+    "title": "Interview Simulator",
+    "intro": "Answer these questions using the STAR method.",
+    "submit": "Submit answers",
+    "score": "Your score",
+    "hint_star": "STAR = Situation, Task, Action, Result — be specific and concise.",
+    "guidance_en_only": "Questions remain in English; guidance is shown in your language."
   }
 }
