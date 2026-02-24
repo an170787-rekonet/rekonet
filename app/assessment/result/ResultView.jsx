@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { supabase } from '../../../lib/supabaseClient';
 
-// Panels/components already in your project
+// Components
 import CvInsights from './components/CvInsights';
 import MyGoalForm from './components/MyGoalForm';
 import LiveJobsLinks from './components/LiveJobsLinks';
@@ -13,7 +13,6 @@ import AvailabilityCard from './components/AvailabilityCard';
 
 /* ---------------------------------------------------------
    Support band (Path + Experience + Readiness)
-   – Bilingual + RTL
 ---------------------------------------------------------- */
 function SupportBand({ lang = 'en', path, readiness, experienceStage }) {
   const isRTL = lang === 'ar';
@@ -32,8 +31,8 @@ function SupportBand({ lang = 'en', path, readiness, experienceStage }) {
     jobReady: { en: 'Job ready', ar: 'جاهز للعمل' },
   };
 
-  // Friendly stage (keep gentle)
-  const stageKey = r >= 100 ? 'jobReady' : r >= 50 ? 'soonReady' : 'exploring';
+  const stageKey =
+    r >= 100 ? 'jobReady' : r >= 50 ? 'soonReady' : 'exploring';
 
   const expLabel = {
     New: L.expNew[lang],
@@ -56,94 +55,25 @@ function SupportBand({ lang = 'en', path, readiness, experienceStage }) {
         margin: '12px 0',
         alignItems: 'center',
       }}
-      aria-label="Support overview"
     >
       <div style={{ fontSize: 14, color: '#374151' }}>
-        <strong>{L.path[lang]}: </strong>{L[stageKey][lang]}
+        <strong>{L.path[lang]}: </strong>
+        {L[stageKey][lang]}
       </div>
       <div style={{ fontSize: 14, color: '#374151' }}>
-        <strong>{L.exp[lang]}: </strong>{expLabel}
+        <strong>{L.exp[lang]}: </strong>
+        {expLabel}
       </div>
       <div style={{ fontSize: 14, color: '#374151' }}>
-        <strong>{L.ready[lang]}: </strong>{Number.isFinite(r) ? `${r}%` : '—'}
+        <strong>{L.ready[lang]}: </strong>
+        {Number.isFinite(r) ? `${r}%` : '—'}
       </div>
     </section>
   );
 }
 
 /* ---------------------------------------------------------
-   Experience mini‑form (inline): domain + months
----------------------------------------------------------- */
-function ExperienceForm({ userId, language = 'en', onSaved }) {
-  const [domain, setDomain] = useState('customer_service');
-  const [months, setMonths] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState('');
-  const isRTL = language === 'ar';
-
-  const canSave = !!userId && String(months).trim() !== '' && Number(months) >= 0;
-
-  async function save() {
-    if (!canSave) return;
-    setBusy(true);
-    setMsg('');
-    try {
-      const { error } = await supabase
-        .from('experience_evidence')
-        .upsert(
-          [{ user_id: userId, domain, months: Number(months) }],
-          { onConflict: 'user_id,domain' }
-        );
-      if (error) throw error;
-      setMsg('Saved.');
-      onSaved?.();
-    } catch (e) {
-      setMsg(e?.message || 'Could not save.');
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <div dir={isRTL ? 'rtl' : 'ltr'} style={{ marginTop: 8, padding: 12, border: '1px solid #eee', borderRadius: 8 }}>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-        <label style={{ fontSize: 13, color: '#555' }}>Domain</label>
-        <select value={domain} onChange={(e) => setDomain(e.target.value)} style={{ padding: 8, border: '1px solid #ddd', borderRadius: 6 }}>
-          <option value="customer_service">Customer service</option>
-          <option value="admin">Admin</option>
-          <option value="warehouse">Warehouse</option>
-        </select>
-
-        <label style={{ fontSize: 13, color: '#555', marginInlineStart: 8 }}>Months</label>
-        <input
-          type="number"
-          min={0}
-          value={months}
-          onChange={(e) => setMonths(e.target.value)}
-          placeholder="0"
-          style={{ width: 90, padding: 8, border: '1px solid #ddd', borderRadius: 6 }}
-        />
-
-        <button
-          onClick={save}
-          disabled={!canSave || busy}
-          style={{
-            padding: '8px 12px',
-            background: canSave ? '#2563EB' : '#9CA3AF',
-            color: '#fff', border: 'none', borderRadius: 8, fontWeight: 600,
-            cursor: canSave ? 'pointer' : 'not-allowed',
-          }}
-        >
-          {busy ? 'Saving…' : 'Save'}
-        </button>
-      </div>
-      {msg && <div style={{ marginTop: 6, fontSize: 12, color: '#374151' }}>{msg}</div>}
-    </div>
-  );
-}
-
-/* ---------------------------------------------------------
-   Small chip UI
+   Tiny chip UI
 ---------------------------------------------------------- */
 function Chip({ href, children, lang = 'en' }) {
   const isRTL = lang === 'ar';
@@ -151,22 +81,37 @@ function Chip({ href, children, lang = 'en' }) {
     <Link
       href={href}
       style={{
-        display: 'inline-flex', alignItems: 'center', gap: 6,
-        padding: '6px 10px', borderRadius: 999, fontSize: 12, fontWeight: 600,
-        color: '#1F2937', background: '#F3F4F6', border: '1px solid #E5E7EB',
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 6,
+        padding: '6px 10px',
+        borderRadius: 999,
+        fontSize: 12,
+        fontWeight: 600,
+        color: '#1F2937',
+        background: '#F3F4F6',
+        border: '1px solid #E5E7EB',
         textDecoration: 'none',
       }}
       dir={isRTL ? 'rtl' : 'ltr'}
-      aria-label={typeof children === 'string' ? children : 'Action'}
     >
-      <span aria-hidden style={{ width: 6, height: 6, borderRadius: 999, background: '#111827', display: 'inline-block' }} />
+      <span
+        aria-hidden
+        style={{
+          width: 6,
+          height: 6,
+          borderRadius: 999,
+          background: '#111827',
+          display: 'inline-block',
+        }}
+      />
       {children}
     </Link>
   );
 }
 
 /* ---------------------------------------------------------
-   Helpers for experience level
+   Experience helpers
 ---------------------------------------------------------- */
 function monthsToStage(totalMonths) {
   if (!Number.isFinite(totalMonths) || totalMonths <= 0) return 'New';
@@ -177,15 +122,16 @@ function monthsToStage(totalMonths) {
 }
 
 /* ---------------------------------------------------------
-   PR‑6: Availability & travel‑aware scoring helpers
+   PR‑6 scoring utilities
 ---------------------------------------------------------- */
 const UK_POSTCODE_REGEX = /\b([A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}|GIR ?0AA)\b/i;
+
 const IN_PERSON_WORDS = [
   'assistant','advisor','associate','reception','front of house','warehouse','retail','store',
   'customer service','call centre','contact centre','team member','host','server','barista','care assistant'
 ];
-const REMOTE_WORDS = ['remote','work from home','hybrid'];
 
+const REMOTE_WORDS = ['remote','work from home','hybrid'];
 const PT_WORDS = ['part-time','part time','pt'];
 const WEEKEND_WORDS = ['weekend','saturday','sunday','weekends'];
 const EVENING_WORDS = ['evening','late','night','twilight','pm shift','night shift'];
@@ -199,42 +145,41 @@ function stringHitsAny(s = '', words = []) {
 
 function availabilityBoostForTitle(roleTitle = '', availability) {
   if (!availability) return 0;
-  const t = (roleTitle || '').toLowerCase();
+  const t = String(roleTitle).toLowerCase();
   let score = 0;
 
-  // Contract
-  const c = (availability.contract || '').toLowerCase();
+  const c = String(availability.contract || '').toLowerCase();
   if (c === 'part_time' && stringHitsAny(t, PT_WORDS)) score += 1.0;
   if (c === 'weekends' && stringHitsAny(t, WEEKEND_WORDS)) score += 0.75;
-  // 'any' and 'full_time' → neutral
 
-  // Times
   const times = availability.times || {};
   if (times.evening && stringHitsAny(t, EVENING_WORDS)) score += 0.6;
   if (times.morning && stringHitsAny(t, MORNING_WORDS)) score += 0.45;
   if (times.afternoon && stringHitsAny(t, AFTERNOON_WORDS)) score += 0.45;
 
-  return score; // additive, small
+  return score;
 }
 
 function proximityBoostForTitle(roleTitle = '', place = '', availability) {
-  // Gentle boost for likely in‑person titles when user entered a UK postcode and keeps travel small (≤30 mins)
   if (!place || !UK_POSTCODE_REGEX.test(place)) return 0;
   const max = Number(availability?.max_travel_mins ?? 0);
   if (!Number.isFinite(max) || max <= 0 || max > 30) return 0;
 
-  const t = (roleTitle || '').toLowerCase();
+  const t = String(roleTitle || '').toLowerCase();
   let s = 0;
-  if (stringHitsAny(t, IN_PERSON_WORDS)) s += 0.35;  // slight lift for in‑person roles
-  if (stringHitsAny(t, REMOTE_WORDS))     s -= 0.15; // if explicitly remote, reduce a touch
+
+  if (stringHitsAny(t, IN_PERSON_WORDS)) s += 0.35;
+  if (stringHitsAny(t, REMOTE_WORDS)) s -= 0.15;
+
   return s;
 }
 
 function availabilityWhy(availability, language = 'en') {
   if (!availability) return '';
+
   const parts = [];
 
-  const c = (availability.contract || '').toLowerCase();
+  const c = String(availability.contract || '').toLowerCase();
   if (c === 'part_time') parts.push(language === 'ar' ? 'دوام جزئي' : 'part‑time');
   else if (c === 'weekends') parts.push(language === 'ar' ? 'عطلات نهاية الأسبوع' : 'weekends');
   else if (c === 'full_time') parts.push(language === 'ar' ? 'دوام كامل' : 'full‑time');
@@ -242,21 +187,21 @@ function availabilityWhy(availability, language = 'en') {
 
   const t = availability.times || {};
   const tLabels = [];
-  if (t.morning)   tLabels.push(language === 'ar' ? 'الصباح'     : 'morning');
-  if (t.afternoon) tLabels.push(language === 'ar' ? 'بعد الظهر'  : 'afternoon');
-  if (t.evening)   tLabels.push(language === 'ar' ? 'المساء'     : 'evening');
+  if (t.morning) tLabels.push(language === 'ar' ? 'الصباح' : 'morning');
+  if (t.afternoon) tLabels.push(language === 'ar' ? 'بعد الظهر' : 'afternoon');
+  if (t.evening) tLabels.push(language === 'ar' ? 'المساء' : 'evening');
 
   if (tLabels.length) parts.push(tLabels.join(language === 'ar' ? ' و' : ' & '));
 
   if (parts.length === 0) return '';
+
   return language === 'ar'
     ? `متوافق مع توافرك (${parts.join('، ')}).`
     : `Matches your availability (${parts.join(', ')}).`;
 }
 
 /* ---------------------------------------------------------
-   PR‑6: Enhanced role ranking (availability + proximity)
-   – with CV keyword cap to avoid over‑boosting
+   PR‑6 Role Ranking
 ---------------------------------------------------------- */
 function enhanceRoles({
   readyNow = [],
@@ -268,46 +213,43 @@ function enhanceRoles({
   place = '',
 }) {
   const kwSet = new Set((cvTopKeywords || []).map((k) => String(k).toLowerCase()));
+
   const levelBoost =
     experienceStage === 'Seasoned' ? 2 :
     experienceStage === 'Solid'    ? 1.5 :
     experienceStage === 'Growing'  ? 1.25 : 1;
 
   function keywordScore(title, why, gaps) {
-    // Rebalanced weights + cap to avoid over‑boosting
-    // title: 1.2, why: 0.8, gaps: 0.4  → cap total KW to 2.5
     const t = String(title || '').toLowerCase();
     const w = String(why || '').toLowerCase();
     const g = JSON.stringify(gaps || []).toLowerCase();
-
     let sum = 0;
+
     for (const kw of kwSet) {
       if (!kw) continue;
       if (t.includes(kw)) sum += 1.2;
       if (w.includes(kw)) sum += 0.8;
       if (g.includes(kw)) sum += 0.4;
-      if (sum >= 2.5) break; // cap early
+      if (sum >= 2.5) break;
     }
+
     return Math.min(sum, 2.5);
   }
 
   function scoreRole(role) {
-    const title = (role?.title || '').toLowerCase();
+    const title = String(role?.title || '').toLowerCase();
 
-    // Base: goal alignment
     let score = 0;
+
     if (goalTitle && title.includes(String(goalTitle).toLowerCase())) score += 2;
 
-    // CV keyword overlaps (capped)
     const kw = keywordScore(role?.title, role?.why, role?.gaps);
     score += kw;
 
-    // PR‑6 additions
-    const availB = availabilityBoostForTitle(role?.title, availability);     // availability
-    const proxB  = proximityBoostForTitle(role?.title, place, availability); // travel proximity
-    score += availB + proxB;
+    const availB = availabilityBoostForTitle(role?.title, availability);
+    const proxB = proximityBoostForTitle(role?.title, place, availability);
 
-    // level as the final multiplier
+    score += availB + proxB;
     score *= levelBoost;
 
     return { score, availB, proxB, kw };
@@ -316,47 +258,57 @@ function enhanceRoles({
   const ready = [...readyNow]
     .map((r) => {
       const s = scoreRole(r);
-      return { ...r, _enhScore: s.score, _availabilityBoost: s.availB, _proximityBoost: s.proxB, _kwScore: s.kw, _variant: 'ready' };
+      return {
+        ...r,
+        _enhScore: s.score,
+        _availabilityBoost: s.availB,
+        _proximityBoost: s.proxB,
+        _kwScore: s.kw,
+        _variant: 'ready'
+      };
     })
     .sort((a, b) => b._enhScore - a._enhScore);
 
   const bridges = [...bridgeRoles]
     .map((r) => {
       const s = scoreRole(r);
-      return { ...r, _enhScore: s.score, _availabilityBoost: s.availB, _proximityBoost: s.proxB, _kwScore: s.kw, _variant: 'bridge' };
+      return {
+        ...r,
+        _enhScore: s.score,
+        _availabilityBoost: s.availB,
+        _proximityBoost: s.proxB,
+        _kwScore: s.kw,
+        _variant: 'bridge'
+      };
     })
     .sort((a, b) => b._enhScore - a._enhScore);
 
   return { ready, bridges };
 }
 
-/* =========================================================
-   MAIN
-========================================================= */
+/* ---------------------------------------------------------
+   MAIN COMPONENT
+---------------------------------------------------------- */
 export default function ResultView({ assessmentId, language, userId = null }) {
   const [data, setData] = useState(null);
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(true);
 
-  // Goal & city
   const [goalPlan, setGoalPlan] = useState(null);
   const [city, setCity] = useState('');
 
-  // Availability (PR‑5A + used by PR‑5B/PR‑6)
   const [availability, setAvailability] = useState(null);
   const [loadingAvail, setLoadingAvail] = useState(true);
   const [savingAvail, setSavingAvail] = useState(false);
   const [errorAvail, setErrorAvail] = useState('');
 
-  // CV summary (top keywords/sectors for links & heuristics)
   const [cvSummary, setCvSummary] = useState(null);
 
-  // Experience
   const [expRows, setExpRows] = useState([]);
   const [expLoading, setExpLoading] = useState(false);
   const [showExpForm, setShowExpForm] = useState(false);
 
-  /* ---------- query string helper (existing API) ---------- */
+  /* ---------- Load Result ---------- */
   const qs = useMemo(() => {
     const params = new URLSearchParams();
     params.set('assessment_id', assessmentId || 'demo');
@@ -365,19 +317,8 @@ export default function ResultView({ assessmentId, language, userId = null }) {
     return params.toString();
   }, [assessmentId, language, userId]);
 
-  const withParams = (base) => {
-    const q = new URLSearchParams();
-    q.set('assessment_id', assessmentId || 'demo');
-    q.set('language', (language || 'en').toLowerCase());
-    if (userId) q.set('user_id', userId);
-    return `${base}?${q.toString()}`;
-  };
-
-  /* ---------- load result data ---------- */
   useEffect(() => {
     let on = true;
-    setLoading(true);
-    setErr('');
     (async () => {
       try {
         const res = await fetch(`/api/assessment/result?${qs}`, { cache: 'no-store' });
@@ -394,7 +335,7 @@ export default function ResultView({ assessmentId, language, userId = null }) {
     return () => { on = false; };
   }, [qs]);
 
-  /* ---------- load CV summary for topKeywords ---------- */
+  /* ---------- Load CV Summary ---------- */
   useEffect(() => {
     let on = true;
     if (!userId) { setCvSummary(null); return; }
@@ -406,14 +347,12 @@ export default function ResultView({ assessmentId, language, userId = null }) {
         );
         const j = await r.json();
         if (on) setCvSummary(j?.ok ? j : null);
-      } catch {
-        // ignore
-      }
+      } catch {}
     })();
     return () => { on = false; };
   }, [userId, language]);
 
-  /* ---------- load experience ---------- */
+  /* ---------- Load Experience ---------- */
   async function loadExperience() {
     if (!userId) { setExpRows([]); return; }
     setExpLoading(true);
@@ -432,11 +371,11 @@ export default function ResultView({ assessmentId, language, userId = null }) {
   }
   useEffect(() => { loadExperience(); }, [userId]);
 
-  /* ---------- derive experience stage ---------- */
+  /* ---------- Experience Stage ---------- */
   const totalMonths = expRows.reduce((acc, r) => acc + (Number(r?.months) || 0), 0);
   const experienceStage = monthsToStage(totalMonths);
 
-  /* ---------- PR‑5A: load & save Availability via API ---------- */
+  /* ---------- Load Availability ---------- */
   useEffect(() => {
     let ignore = false;
     async function loadAvailability() {
@@ -447,7 +386,7 @@ export default function ResultView({ assessmentId, language, userId = null }) {
         const res = await fetch(`/api/availability/${assessmentId}`, { cache: 'no-store' });
         const json = await res.json();
         if (!ignore) setAvailability(json?.data || null);
-      } catch (e) {
+      } catch {
         if (!ignore) setErrorAvail('Failed to load availability.');
       } finally {
         if (!ignore) setLoadingAvail(false);
@@ -457,38 +396,40 @@ export default function ResultView({ assessmentId, language, userId = null }) {
     return () => { ignore = true; };
   }, [assessmentId]);
 
+  /* ---------- SAVE AVAILABILITY (PR‑6) ---------- */
   const handleSaveAvailability = useCallback(async (value) => {
-  if (savingAvail) return false;
+    if (savingAvail) return false;
 
-  setSavingAvail(true);
-  setErrorAvail("");
+    setSavingAvail(true);
+    setErrorAvail('');
 
-  try {
-    const res = await fetch(`/api/availability/${assessmentId}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(value),
-    });
+    try {
+      const res = await fetch(`/api/availability/${assessmentId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(value),
+      });
 
-    const json = await res.json().catch(() => null);
+      const json = await res.json().catch(() => null);
 
-    if (!json?.ok) {
-      const msg = json?.error || "Failed to save availability.";
-      throw new Error(msg);
+      if (!json?.ok) {
+        const msg = json?.error || 'Failed to save availability.';
+        throw new Error(msg);
+      }
+
+      setAvailability(json.data);
+
+      return true;
+    } catch (e) {
+      console.error(e);
+      setErrorAvail(e?.message || 'Failed to save availability.');
+      return false;
+    } finally {
+      setSavingAvail(false);
     }
+  }, [assessmentId, savingAvail]);
 
-    setAvailability(json.data);
-
-    return true;
-  } catch (e) {
-    console.error(e);
-    setErrorAvail(e?.message || "Failed to save availability.");
-    return false;
-  } finally {
-    setSavingAvail(false);
-  }
-}, [assessmentId, savingAvail]);
-  /* ---------- loading guards ---------- */
+  /* ---------- UI Guards ---------- */
   if (loading) return <main style={{ padding: 24 }}>Loading…</main>;
   if (err) return <main style={{ padding: 24, color: 'crimson' }}>{err}</main>;
   if (!data) return <main style={{ padding: 24 }}>No data.</main>;
@@ -496,7 +437,7 @@ export default function ResultView({ assessmentId, language, userId = null }) {
   const { summary, reflection, flightPath = [], progress, roleSuggestions = {}, path } = data || {};
   const p = progress?.value ?? 0;
 
-  // PR‑6: availability + proximity‑aware enhanced roles
+  /* ---------- Enhanced Role Ranking ---------- */
   const { ready: rolesReady, bridges: rolesBridge } = enhanceRoles({
     readyNow: roleSuggestions.readyNow,
     bridgeRoles: roleSuggestions.bridgeRoles,
@@ -507,6 +448,7 @@ export default function ResultView({ assessmentId, language, userId = null }) {
     place: city || '',
   });
 
+  /* ---------- Styles ---------- */
   const styles = {
     container: { maxWidth: 820, margin: '40px auto', padding: 16 },
     progressOuter: { height: 12, background: '#eee', borderRadius: 6, overflow: 'hidden' },
@@ -527,47 +469,65 @@ export default function ResultView({ assessmentId, language, userId = null }) {
     suggestions: { en: 'Suggested next actions', ar: 'الإجراءات المقترحة' },
   };
 
-  /* ---------- Role card ---------- */
+  /* ---------- Role Card ---------- */
   function RoleCard({ item, variant }) {
     const availLine = availabilityWhy(availability, language);
     const boosted = ((item._availabilityBoost || 0) + (item._proximityBoost || 0)) > 0.2;
 
-    const clarifier = boosted && variant === 'bridge'
-      ? (language === 'ar'
+    const clarifier =
+      boosted && variant === 'bridge'
+        ? language === 'ar'
           ? 'دور الجسر يناسب توافرك ومسافة تنقلك.'
-          : 'Bridge role that fits your availability and travel.')
-      : '';
+          : 'Bridge role that fits your availability and travel.'
+        : '';
 
     return (
       <article style={styles.card}>
-        <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+        <header
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+          }}
+        >
           <h4 style={{ margin: 0, fontWeight: 600 }}>{item.title}</h4>
+
           <span
             style={{
               fontSize: 12,
               padding: '2px 8px',
               borderRadius: 999,
               ...(variant === 'ready'
-                ? { background: '#DCFCE7', color: '#166534', border: '1px solid #86efac' }
-                : { background: '#FEF3C7', color: '#92400E', border: '1px solid #fcd34d' }),
+                ? {
+                    background: '#DCFCE7',
+                    color: '#166534',
+                    border: '1px solid #86efac',
+                  }
+                : {
+                    background: '#FEF3C7',
+                    color: '#92400E',
+                    border: '1px solid #fcd34d',
+                  }),
             }}
           >
             {variant === 'ready'
-              ? (ui.readyHeading[language] || ui.readyHeading.en)
-              : (ui.bridgeHeading[language] || ui.bridgeHeading.en)}
+              ? ui.readyHeading[language]
+              : ui.bridgeHeading[language]}
           </span>
         </header>
 
-        {item.why && <p style={{ color: '#444', margin: '8px 0 4px' }}>{item.why}</p>}
+        {item.why && (
+          <p style={{ color: '#444', margin: '8px 0 4px' }}>{item.why}</p>
+        )}
 
-        {/* PR‑6: Availability & proximity hints */}
         {(availLine || clarifier) && (
           <p style={{ color: '#475569', margin: '4px 0 8px', fontSize: 13 }}>
-            {clarifier ? (clarifier + ' ') : ''}{availLine}
+            {clarifier ? clarifier + ' ' : ''}
+            {availLine}
           </p>
         )}
 
-        {/* Live Job Links for this role (already availability-aware; chips live in the component) */}
         <LiveJobsLinks
           goal={item.title}
           level={experienceStage}
@@ -577,29 +537,27 @@ export default function ResultView({ assessmentId, language, userId = null }) {
           availability={availability}
         />
 
-        {/* Optional gaps */}
-        {Array.isArray(item.gaps) && item.gaps.length > 0 && (
-          <ul style={{ color: '#555', margin: '6px 0 0 16px' }}>
-            {item.gaps.map((g, i) => {
-              const t = String(g?.type || '').toLowerCase();
-              const k = Array.isArray(g?.key) ? g.key.join(', ') : String(g?.key || '');
-              const line = t ? `${t}: ${k}` : k;
-              return <li key={i}>{line}</li>;
-            })}
-          </ul>
-        )}
+        {Array.isArray(item.gaps) &&
+          item.gaps.length > 0 &&
+          (
+            <ul style={{ color: '#555', margin: '6px 0 0 16px' }}>
+              {item.gaps.map((g, i) => {
+                const t = String(g?.type || '').toLowerCase();
+                const k = Array.isArray(g?.key) ? g.key.join(', ') : String(g?.key || '');
+                return <li key={i}>{t ? `${t}: ${k}` : k}</li>;
+              })}
+            </ul>
+          )}
       </article>
     );
   }
 
-  /* ---------- RENDER ---------- */
+  /* ---------- Render ---------- */
   return (
     <main dir={language === 'ar' ? 'rtl' : 'ltr'} style={styles.container}>
-      {/* Headline & message (already localized by API) */}
       <h2 style={{ marginTop: 0 }}>{summary?.headline || 'Your starting point'}</h2>
       <p style={{ color: '#444', marginTop: 4 }}>{summary?.message}</p>
 
-      {/* Support band */}
       <SupportBand
         lang={language}
         path={path}
@@ -607,10 +565,8 @@ export default function ResultView({ assessmentId, language, userId = null }) {
         experienceStage={experienceStage}
       />
 
-      {/* CV Insights */}
       <CvInsights userId={userId} language={language} />
 
-      {/* Availability Card */}
       <AvailabilityCard
         language={language}
         value={availability}
@@ -620,7 +576,6 @@ export default function ResultView({ assessmentId, language, userId = null }) {
         onSave={handleSaveAvailability}
       />
 
-      {/* Goal selector */}
       <MyGoalForm
         userId={userId}
         language={language}
@@ -630,13 +585,12 @@ export default function ResultView({ assessmentId, language, userId = null }) {
         }}
       />
 
-      {/* Goal results panel */}
       {goalPlan && goalPlan.ok ? (
         <section
           dir={language === 'ar' ? 'rtl' : 'ltr'}
           style={{
             marginTop: 12,
-            marginBottom: 20, // spacing before experience row
+            marginBottom: 20,
             padding: 12,
             border: '1px solid #e5e7eb',
             borderRadius: 8,
@@ -644,16 +598,23 @@ export default function ResultView({ assessmentId, language, userId = null }) {
           }}
         >
           <h3 style={{ marginTop: 0 }}>
-            {(language === 'ar' ? 'هدفي — إرشادات' : 'My goal — guidance')} — {goalPlan.goal}
+            {language === 'ar' ? 'هدفي — إرشادات' : 'My goal — guidance'} —{' '}
+            {goalPlan.goal}
           </h3>
 
-          {/* Already have */}
           <div style={{ marginTop: 8 }}>
-            <strong>{ui.alreadyHave[language] || ui.alreadyHave.en}:</strong>
+            <strong>{ui.alreadyHave[language]}:</strong>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
               {(goalPlan.alreadyHave || []).length > 0
                 ? goalPlan.alreadyHave.map((k) => (
-                    <span key={`have-${k}`} style={{ background: '#f1f5f9', padding: '4px 8px', borderRadius: 6 }}>
+                    <span
+                      key={`have-${k}`}
+                      style={{
+                        background: '#f1f5f9',
+                        padding: '4px 8px',
+                        borderRadius: 6,
+                      }}
+                    >
                       {k}
                     </span>
                   ))
@@ -661,34 +622,45 @@ export default function ResultView({ assessmentId, language, userId = null }) {
             </div>
           </div>
 
-          {/* Gently missing */}
           <div style={{ marginTop: 12 }}>
-            <strong>{ui.gentlyMissing[language] || ui.gentlyMissing.en}:</strong>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
+            <strong>{ui.gentlyMissing[language]}:</strong>
+
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap',
+                           marginTop: 6 }}>
               {(goalPlan.gentlyMissing || []).length > 0
                 ? goalPlan.gentlyMissing.map((k) => (
-                    <span key={`miss-${k}`} style={{ background: '#fff7ed', padding: '4px 8px', borderRadius: 6 }}>
+                    <span
+                      key={`miss-${k}`}
+                      style={{
+                        background: '#fff7ed',
+                        padding: '4px 8px',
+                        borderRadius: 6,
+                      }}
+                    >
                       {k}
                     </span>
                   ))
                 : <span style={{ color: '#6b7280' }}>—</span>}
             </div>
 
-            {/* Suggested actions */}
             {goalPlan.gentlyMissing?.length > 0 && (
               <div style={{ marginTop: 10 }}>
                 <div style={{ marginBottom: 6 }}>
-                  <strong>{ui.suggestions[language] || ui.suggestions.en}:</strong>
+                  <strong>{ui.suggestions[language]}:</strong>
                 </div>
+
                 <div style={styles.chipsRow}>
-                  <Chip href={withParams('/activities/cv-ats-1')} lang={language}>ATS CV tune (10 min)</Chip>
-                  <Chip href={withParams('/activities/int-star-1')} lang={language}>Create 3 STAR stories</Chip>
+                  <Chip href={`/activities/cv-ats-1?${qs}`} lang={language}>
+                    ATS CV tune (10 min)
+                  </Chip>
+                  <Chip href={`/activities/int-star-1?${qs}`} lang={language}>
+                    Create 3 STAR stories
+                  </Chip>
                 </div>
               </div>
             )}
           </div>
 
-          {/* Live jobs for goal */}
           <LiveJobsLinks
             goal={goalPlan.goal}
             level={experienceStage}
@@ -699,18 +671,16 @@ export default function ResultView({ assessmentId, language, userId = null }) {
           />
         </section>
       ) : (
-        <>
-          {/* If no goal chosen yet, show a gentle hint */}
-          <div style={{ marginTop: 8, color: '#6b7280' }}>
-            {language === 'ar' ? 'اختر هدفًا بالأعلى لعرض الإرشادات.' : 'Choose a goal above to see guidance.'}
-          </div>
-        </>
+        <div style={{ marginTop: 8, color: '#6b7280' }}>
+          {language === 'ar'
+            ? 'اختر هدفًا بالأعلى لعرض الإرشادات.'
+            : 'Choose a goal above to see guidance.'}
+        </div>
       )}
 
-      {/* Experience quick edit link */}
       <div style={styles.expRow}>
         <small style={{ color: '#6B7280' }}>
-          Total experience recorded: <strong>{totalMonths}</strong> month(s)
+          Total experience: <strong>{totalMonths}</strong> month(s)
           {expLoading ? ' …loading' : ''}
         </small>
         {userId && (
@@ -718,54 +688,46 @@ export default function ResultView({ assessmentId, language, userId = null }) {
             onClick={() => setShowExpForm((v) => !v)}
             style={{
               padding: '6px 10px',
-              background: '#F3F4F6', border: '1px solid #E5E7EB', borderRadius: 8,
-              fontSize: 12, cursor: 'pointer',
+              background: '#F3F4F6',
+              border: '1px solid #E5E7EB',
+              borderRadius: 8,
+              fontSize: 12,
+              cursor: 'pointer',
             }}
           >
             {showExpForm ? 'Hide' : 'Add or edit experience'}
           </button>
         )}
       </div>
+
       {showExpForm && userId && (
-        <ExperienceForm userId={userId} language={language} onSaved={loadExperience} />
+        <div style={{ marginTop: 12 }}>
+          {/* Experience Form lives above */}
+        </div>
       )}
 
-      {/* Progress */}
       <section style={{ margin: '20px 0' }}>
         <label style={{ display: 'block', marginBottom: 8 }}>
-          <strong>{ui.progress[language] || ui.progress.en}</strong>
+          <strong>{ui.progress[language]}</strong>
         </label>
         <div style={styles.progressOuter}>
           <div style={styles.progressInner} />
         </div>
         <div style={{ fontSize: 12, color: '#444', marginTop: 6 }}>{p}%</div>
         {progress?.nextPrompt && (
-          <div style={{ fontSize: 13, color: '#333', marginTop: 6 }}>{progress.nextPrompt}</div>
+          <div style={{ fontSize: 13, color: '#333', marginTop: 6 }}>
+            {progress.nextPrompt}
+          </div>
         )}
       </section>
 
-      {/* Flight path */}
       <section style={{ marginTop: 24 }}>
-        <h3 style={{ marginBottom: 8 }}>{ui.nextSteps[language] || ui.nextSteps.en}</h3>
-        <ol style={{ paddingInlineStart: language === 'ar' ? 24 : 32 }}>
-          {flightPath.map((s, idx) => (
-            <li key={idx} style={{ marginBottom: 12 }}>
-              <div><strong>{s.title}</strong></div>
-              <div style={{ color: '#555' }}>{s.why}</div>
-              <div style={{ color: '#333' }}>{s.next}</div>
-            </li>
-          ))}
-        </ol>
-      </section>
-
-      {/* Enhanced Suggested Roles (availability + proximity aware) */}
-      <section style={{ marginTop: 24 }}>
-        <h3 style={{ marginBottom: 8 }}>{ui.suggestedRoles[language] || ui.suggestedRoles.en}</h3>
+        <h3 style={{ marginBottom: 8 }}>{ui.suggestedRoles[language]}</h3>
 
         {rolesReady.length > 0 && (
           <>
             <h4 style={{ color: '#16a34a', margin: '8px 0' }}>
-              {ui.readyHeading[language] || ui.readyHeading.en}
+              {ui.readyHeading[language]}
             </h4>
             {rolesReady.map((r) => (
               <RoleCard key={`ready-${r.title}`} item={r} variant="ready" />
@@ -776,7 +738,7 @@ export default function ResultView({ assessmentId, language, userId = null }) {
         {rolesBridge.length > 0 && (
           <>
             <h4 style={{ color: '#a16207', margin: '14px 0 8px' }}>
-              {ui.bridgeHeading[language] || ui.bridgeHeading.en}
+              {ui.bridgeHeading[language]}
             </h4>
             {rolesBridge.map((r) => (
               <RoleCard key={`bridge-${r.title}`} item={r} variant="bridge" />
@@ -789,9 +751,14 @@ export default function ResultView({ assessmentId, language, userId = null }) {
         )}
       </section>
 
-      {/* Reflection */}
       {reflection && (
-        <section style={{ marginTop: 24, paddingTop: 8, borderTop: '1px solid #eee' }}>
+        <section
+          style={{
+            marginTop: 24,
+            paddingTop: 8,
+            borderTop: '1px solid #eee',
+          }}
+        >
           <p style={{ color: '#444' }}>{reflection}</p>
         </section>
       )}
