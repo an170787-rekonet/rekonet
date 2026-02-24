@@ -1,85 +1,117 @@
 // app/api/availability/[assessmentId]/route.js
-"use server";
 
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
+// Next.js route handlers are server by default. Do NOT add "use server" here.
 export const runtime = "nodejs"; // ensure Node runtime (not Edge)
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+/**
+ * Prefer server-only env vars on the server.
+ * Fall back to NEXT_PUBLIC_* if needed (not recommended for writes).
+ */
+const SUPABASE_URL =
+  process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_KEY =
+  process.env.SUPABASE_SERVICE_ROLE ||
+  process.env.SUPABASE_ANON_KEY ||
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-/** GET /api/availability/:assessmentId */
+if (!SUPABASE_URL || !SUPABASE_KEY) {
+  console.warn(
+    "[availability route] Missing Supabase env vars. Check SUPABASE_URL and SUPABASE_SERVICE_ROLE / ANON KEY."
+  );
+}
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+/**
+ * GET /api/availability/:assessmentId
+ * Returns { data } where data is the JSON payload you store.
+ */
 export async function GET(_req, { params }) {
   try {
+    const assessmentId = params?.assessmentId;
+    if (!assessmentId) {
+      return NextResponse.json(
+        { error: "Missing assessmentId" },
+        { status: 400 }
+      );
+    }
+
     const { data, error } = await supabase
       .from("availability")
-      .select("*")
-      .eq("assessment_id", params.assessmentId)
-      .order("created_at", { ascending: false })
-      .limit(1)
+      .select("data")
+      .eq("assessment_id", assessmentId)
       .maybeSingle();
 
-    if (error) throw error;
-    return NextResponse.json({ data: data || null }, { status: 200 });
+    if (error) {
+      console.error("[availability GET] Supabase error:", error);
+      return NextResponse.json(
+        { error: "Database error while loading availability." },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ data: data?.data ?? null }, { status: 200 });
   } catch (e) {
-    return NextResponse.json({ error: e?.message || "Supabase GET failed." }, { status: 500 });
+    console.error("[availability GET] Unexpected error:", e);
+    return NextResponse.json(
+      { error: "Unexpected error." },
+      { status: 500 }
+    );
   }
 }
 
-/** PUT /api/availability/:assessmentId
- * Deterministic: try UPDATE; if no row updated, INSERT.
+/**
+ * PUT /api/availability/:assessmentId
+ * Body: JSON object you want to store under 'data'.
+ * Returns { data } echoing what is stored.
  */
 export async function PUT(req, { params }) {
   try {
-    const payload = await req.json();
-    const assessmentId = params.assessmentId;
-
-    // 1) UPDATE first
-    const { data: updData, error: updErr } = await supabase
-      .from("availability")
-      .update({
-        days: Array.isArray(payload?.days) ? payload.days : [],
-        times: payload?.times || {},
-        contract: payload?.contract || null,
-        max_travel_mins: Number(payload?.max_travel_mins) || 0,
-        earliest_start: payload?.earliest_start || null,
-      })
-      .eq("assessment_id", assessmentId)
-      .select("*")
-      .limit(1);
-
-    if (updErr) throw updErr;
-    if (Array.isArray(updData) && updData.length > 0) {
-      return NextResponse.json({ data: updData[0] }, { status: 200 });
+    const assessmentId = params?.assessmentId;
+    if (!assessmentId) {
+      return NextResponse.json(
+        { error: "Missing assessmentId" },
+        { status: 400 }
+      );
     }
 
-    // 2) If no row was updated, INSERT
-    const insertObj = {
-      assessment_id: assessmentId,
-      days: Array.isArray(payload?.days) ? payload.days : [],
-      times: payload?.times || {},
-      contract: payload?.contract || null,
-      max_travel_mins: Number(payload?.max_travel_mins) || 0,
-      earliest_start: payload?.earliest_start || null,
-    };
+    let payload;
+    try {
+      payload = await req.json();
+    } catch {
+      return NextResponse.json(
+        { error: "Invalid JSON body." },
+        { status: 400 }
+      );
+    }
 
-    const { data: insData, error: insErr } = await supabase
+    // Upsert by assessment_id
+    const { data, error } = await supabase
       .from("availability")
-      .insert([insertObj])
-      .select("*")
-      .limit(1);
+      .upsert(
+        [{ assessment_id: assessmentId, data: payload }],
+        { onConflict: "assessment_id" } // requires a unique index on assessment_id
+      )
+      .select("data")
+      .maybeSingle();
 
-    if (insErr) throw insErr;
+    if (error) {
+      console.error("[availability PUT] Supabase error:", error);
+      return NextResponse.json(
+        { error: "Database error while saving availability." },
+        { status: 500 }
+      );
+    }
 
-    return NextResponse.json(
-      { data: Array.isArray(insData) ? insData[0] : insData },
-      { status: 200 }
-    );
+    return NextResponse.json({ data: data?.data ?? payload }, { status: 200 });
   } catch (e) {
-    // Return the real message so the UI can show it
-    return NextResponse.json({ error: e?.message || "Supabase PUT failed." }, { status: 500 });
+    console.error("[availability PUT] Unexpected error:", e);
+    return NextResponse.json(
+      { error: "Unexpected error." },
+      { status: 500 }
+    );
   }
 }
