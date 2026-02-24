@@ -1,6 +1,6 @@
 // app/api/interview/attempt/route.js
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabaseClient";
+import { supabase } from "../../../../lib/supabaseClient";
 
 // GET recent attempts
 export async function GET(req) {
