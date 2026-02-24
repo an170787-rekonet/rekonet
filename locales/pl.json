@@ -1,0 +1,10 @@
+{
+  "interview": {
+    "title": "Symulator rozmowy kwalifikacyjnej",
+    "intro": "Odpowiadaj metodą STAR.",
+    "submit": "Wyślij odpowiedzi",
+    "score": "Twój wynik",
+    "hint_star": "STAR = Sytuacja, Zadanie, Działanie, Rezultat — wyjaśnij krótko.",
+    "guidance_en_only": "Pytania pozostają po angielsku, ale wskazówki są w Twoim języku."
+  }
+}
