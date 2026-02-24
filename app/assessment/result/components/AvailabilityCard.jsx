@@ -22,7 +22,7 @@ export default function AvailabilityCard({
 
   // Success banner (auto-clears after 3s)
   const [savedOk, setSavedOk] = useState(false);
-
+const [saved, setSaved] = useState(false);
   // Hydrate when parent provides/changes `value`
   useEffect(() => {
     if (!value) return;
