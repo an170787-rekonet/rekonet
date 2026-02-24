@@ -458,51 +458,36 @@ export default function ResultView({ assessmentId, language, userId = null }) {
   }, [assessmentId]);
 
   const handleSaveAvailability = useCallback(async (value) => {
-    // Optional: prevent double submit
-    if (savingAvail) return false;
+  if (savingAvail) return false;
 
-    setSavingAvail(true);
-    setErrorAvail('');
+  setSavingAvail(true);
+  setErrorAvail("");
 
-    try {
-      const res = await fetch(`/api/availability/${assessmentId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(value),
-      });
+  try {
+    const res = await fetch(`/api/availability/${assessmentId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(value),
+    });
 
-      // Try to parse JSON either way so we can surface server messages
-      let data = null;
-      try {
-        data = await res.json();
-      } catch {
-        // no JSON body; that's fine
-      }
+    const json = await res.json().catch(() => null);
 
-      if (!res.ok) {
-        const msg =
-          (data && (data.error || data.message)) ||
-          `Failed to save availability (HTTP ${res.status})`;
-        throw new Error(msg);
-      }
-
-      // Reflect server-returned availability (fallback to sent value)
-      if (data && data.data !== undefined) {
-        setAvailability(data.data);
-      } else {
-        setAvailability(value);
-      }
-
-      return true;
-    } catch (e) {
-      console.error(e);
-      setErrorAvail(e?.message || 'Failed to save availability.');
-      return false;
-    } finally {
-      setSavingAvail(false);
+    if (!json?.ok) {
+      const msg = json?.error || "Failed to save availability.";
+      throw new Error(msg);
     }
-  }, [assessmentId, savingAvail]);
 
+    setAvailability(json.data);
+
+    return true;
+  } catch (e) {
+    console.error(e);
+    setErrorAvail(e?.message || "Failed to save availability.");
+    return false;
+  } finally {
+    setSavingAvail(false);
+  }
+}, [assessmentId, savingAvail]);
   /* ---------- loading guards ---------- */
   if (loading) return <main style={{ padding: 24 }}>Loading…</main>;
   if (err) return <main style={{ padding: 24, color: 'crimson' }}>{err}</main>;
