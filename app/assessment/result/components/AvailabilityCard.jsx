@@ -18,28 +18,46 @@ export default function AvailabilityCard({
   const [times, setTimes] = useState({ morning: false, afternoon: false, evening: true });
   const [contract, setContract] = useState("full_time");
   const [maxTravel, setMaxTravel] = useState(30);
-  const [earliest, setEarliest] = useState(""); // yyyy-mm-dd for <input type="date">
+  const [earliest, setEarliest] = useState(""); // yyyy-mm-dd
 
-  // Success banner (auto-clears after 3s)
+  // Success banner
   const [savedOk, setSavedOk] = useState(false);
 
-  // NEW: Saved state for the button (“Saved ✓” for 2.5s)
+  // NEW: Saved ✓ button state
   const [saved, setSaved] = useState(false);
 
-  // Hydrate when parent provides/changes `value`
+  // Store original values separately for "has form changed?" logic
+  const [original, setOriginal] = useState(null);
+
+  // Hydrate when parent provides `value`
   useEffect(() => {
     if (!value) return;
-    if (Array.isArray(value.days)) setDays(normalizeDays(value.days));
-    if (value.times && typeof value.times === "object") {
-      setTimes({
-        morning: !!value.times.morning,
-        afternoon: !!value.times.afternoon,
-        evening: !!value.times.evening,
-      });
-    }
-    if (value.contract) setContract(value.contract);
-    if (typeof value.max_travel_mins === "number") setMaxTravel(value.max_travel_mins);
-    if (value.earliest_start) setEarliest(toInputDate(value.earliest_start));
+
+    const normalizedDays = Array.isArray(value.days)
+      ? normalizeDays(value.days)
+      : ["mon", "tue", "wed"];
+
+    const initialObj = {
+      days: normalizedDays,
+      times: {
+        morning: !!value.times?.morning,
+        afternoon: !!value.times?.afternoon,
+        evening: !!value.times?.evening,
+      },
+      contract: value.contract || "full_time",
+      maxTravel: Number(value.max_travel_mins) || 0,
+      earliest: value.earliest_start ? toInputDate(value.earliest_start) : "",
+    };
+
+    // Set local UI state
+    setDays(initialObj.days);
+    setTimes(initialObj.times);
+    setContract(initialObj.contract);
+    setMaxTravel(initialObj.maxTravel);
+    setEarliest(initialObj.earliest);
+
+    // Store original to compare changes
+    setOriginal(initialObj);
   }, [value]);
 
   // Auto-hide success banner after 3 seconds
@@ -49,7 +67,7 @@ export default function AvailabilityCard({
     return () => clearTimeout(t);
   }, [savedOk]);
 
-  // ---------- Labels ----------
+  // ---------- LABELS ----------
   const L = useMemo(
     () => ({
       title: { en: "Availability", ar: "التوفر" },
@@ -79,9 +97,8 @@ export default function AvailabilityCard({
     [language]
   );
 
-  // ---------- Helpers ----------
+  // ---------- HELPERS ----------
   function normalizeDays(arr) {
-    // Accept variations like ["MON","Tue","wednesday"] → normalize to ["mon","tue","wed"]
     const map = {
       mon: "mon", tue: "tue", wed: "wed", thu: "thu", fri: "fri", sat: "sat", sun: "sun",
       monday: "mon", tuesday: "tue", wednesday: "wed", thursday: "thu", friday: "fri", saturday: "sat", sunday: "sun",
@@ -109,14 +126,30 @@ export default function AvailabilityCard({
     }
   }
 
-  const allDayKeys = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+  const dayKeys = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
   const dayLabel = (k) => L[k]?.[language] || k.toUpperCase();
   const dir = isRTL ? "rtl" : "ltr";
 
-  // ---------- UI handlers ----------
+  // ---------- DETECT IF FORM HAS CHANGED ----------
+  const isDirty = original
+    ? (
+      JSON.stringify({
+        days,
+        times,
+        contract,
+        maxTravel: Number(maxTravel),
+        earliest
+      }) !== JSON.stringify(original)
+    )
+    : false;
+
+  // ---------- UI HANDLERS ----------
   function toggleDay(k) {
-    setDays((prev) => (prev.includes(k) ? prev.filter((x) => x !== k) : [...prev, k]));
+    setDays((prev) => (
+      prev.includes(k) ? prev.filter((x) => x !== k) : [...prev, k]
+    ));
   }
+
   function toggleTime(k) {
     setTimes((prev) => ({ ...prev, [k]: !prev[k] }));
   }
@@ -131,18 +164,29 @@ export default function AvailabilityCard({
       earliest_start: earliest || null,
     };
     try {
-      await onSave(payload);   // parent handles PUT and error state
-      setSavedOk(true);        // show success banner
+      await onSave(payload);
 
-      // NEW: show “Saved ✓” on the button for 2.5s
+      // Banner
+      setSavedOk(true);
+
+      // Button state
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
+
+      // Reset original to new values
+      setOriginal({
+        days,
+        times,
+        contract,
+        maxTravel: Number(maxTravel),
+        earliest,
+      });
     } catch {
-      // parent sets `error`; nothing to do here
+      /* parent sets error */
     }
   }
 
-  // ---------- Render ----------
+  // ---------- RENDER ----------
   return (
     <section
       dir={dir}
@@ -158,18 +202,17 @@ export default function AvailabilityCard({
         {L.title[language]}
       </div>
 
-      {/* Loading state */}
       {loading ? (
         <div style={{ color: "#6b7280" }}>Loading…</div>
       ) : (
         <>
-          {/* Days row */}
+          {/* Days */}
           <div style={{ marginTop: 6 }}>
             <div style={{ fontSize: 12, color: "#374151", marginBottom: 6 }}>
               {L.daysYouCanWork[language]}
             </div>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              {allDayKeys.map((k) => {
+              {dayKeys.map((k) => {
                 const active = days.includes(k);
                 return (
                   <button
@@ -194,7 +237,7 @@ export default function AvailabilityCard({
             </div>
           </div>
 
-          {/* Times row */}
+          {/* Times */}
           <div style={{ marginTop: 12 }}>
             <div style={{ fontSize: 12, color: "#374151", marginBottom: 6 }}>
               {L.timesYouCanWork[language]}
@@ -226,11 +269,11 @@ export default function AvailabilityCard({
             </div>
           </div>
 
-          {/* Contract + travel + date */}
+          {/* Contract + Travel + Date */}
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "1.2fr 1fr 0.8fr", // contract a bit wider, date a bit tighter
+              gridTemplateColumns: "1.2fr 1fr 0.8fr",
               alignItems: "center",
               gap: 12,
               marginTop: 12,
@@ -274,7 +317,7 @@ export default function AvailabilityCard({
                   width: 140,
                   minWidth: 120,
                   maxWidth: 160,
-                  height: 38,                 // match select height
+                  height: 38,
                   padding: "8px 10px",
                   border: "1px solid #ddd",
                   borderRadius: 6,
@@ -283,7 +326,7 @@ export default function AvailabilityCard({
               />
             </div>
 
-            {/* Earliest start */}
+            {/* Earliest Start */}
             <div>
               <div style={{ fontSize: 12, color: "#374151", marginBottom: 6 }}>
                 {L.earliest[language]}
@@ -296,7 +339,7 @@ export default function AvailabilityCard({
                   width: 160,
                   minWidth: 140,
                   maxWidth: 180,
-                  height: 38,                 // match select/number
+                  height: 38,
                   padding: "8px 10px",
                   border: "1px solid #ddd",
                   borderRadius: 6,
@@ -328,22 +371,21 @@ export default function AvailabilityCard({
             </div>
           ) : null}
 
-          {/* Save */}
+          {/* Save Button */}
           <div style={{ marginTop: 10 }}>
             <button
               type="button"
               onClick={handleSave}
-              disabled={saving}
+              disabled={saving || !isDirty}
               style={{
                 padding: "8px 12px",
-                // NEW: turn green while in "Saved ✓" state
                 background: saved ? "#16A34A" : "#2563EB",
                 color: "#fff",
                 border: "none",
                 borderRadius: 8,
                 fontWeight: 700,
-                cursor: saving ? "not-allowed" : "pointer",
-                opacity: saving ? 0.75 : 1,
+                cursor: saving || !isDirty ? "not-allowed" : "pointer",
+                opacity: saving || !isDirty ? 0.75 : 1,
               }}
             >
               {saving
@@ -358,3 +400,4 @@ export default function AvailabilityCard({
     </section>
   );
 }
+``
