@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-
+import { t, dirFor } from "../../../../lib/i18n/t";
 export default function AvailabilityCard({
   language = "en",
   value,
