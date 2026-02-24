@@ -1,16 +1,13 @@
 // app/api/interview/attempt/route.js
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabaseClient";
+import { supabase } from "@/lib/supabaseClient";
 
-/**
- * GET /api/interview/attempt?assessment_id=...&limit=3
- * Returns recent attempts (id, question_id, score, created_at)
- */
+// GET recent attempts
 export async function GET(req) {
   try {
     const { searchParams } = new URL(req.url);
     const assessmentId = searchParams.get("assessment_id");
-    const limit = Math.max(1, Math.min(10, Number(searchParams.get("limit") || 3)));
+    const limit = Number(searchParams.get("limit") || 3);
 
     if (!assessmentId) {
       return NextResponse.json(
@@ -19,7 +16,6 @@ export async function GET(req) {
       );
     }
 
-    const supabase = createClient();
     const { data, error } = await supabase
       .from("interview_attempts")
       .select("id, question_id, score, created_at")
@@ -28,28 +24,22 @@ export async function GET(req) {
       .limit(limit);
 
     if (error) {
-      return NextResponse.json(
-        { ok: false, data: null, error: error.message },
-        { status: 400 }
-      );
+      return NextResponse.json({ ok: false, data: null, error: error.message });
     }
 
-    return NextResponse.json({ ok: true, data, error: null }, { status: 200 });
-  } catch (err) {
-    return NextResponse.json(
-      { ok: false, data: null, error: "Unexpected server error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ ok: true, data, error: null });
+  } catch {
+    return NextResponse.json({
+      ok: false,
+      data: null,
+      error: "Unexpected server error"
+    });
   }
 }
 
-/**
- * POST /api/interview/attempt
- * Body: { assessment_id, question_id, answer, score }
- */
+// POST new attempt
 export async function POST(req) {
   try {
-    const supabase = createClient();
     const body = await req.json();
 
     const { data, error } = await supabase
@@ -59,17 +49,15 @@ export async function POST(req) {
       .single();
 
     if (error) {
-      return NextResponse.json(
-        { ok: false, data: null, error: error.message },
-        { status: 400 }
-      );
+      return NextResponse.json({ ok: false, data: null, error: error.message });
     }
 
-    return NextResponse.json({ ok: true, data, error: null }, { status: 200 });
-  } catch (err) {
-    return NextResponse.json(
-      { ok: false, data: null, error: "Unexpected server error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ ok: true, data, error: null });
+  } catch {
+    return NextResponse.json({
+      ok: false,
+      data: null,
+      error: "Unexpected server error"
+    });
   }
 }
