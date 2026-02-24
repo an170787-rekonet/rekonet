@@ -22,7 +22,10 @@ export default function AvailabilityCard({
 
   // Success banner (auto-clears after 3s)
   const [savedOk, setSavedOk] = useState(false);
-const [saved, setSaved] = useState(false);
+
+  // NEW: Saved state for the button (“Saved ✓” for 2.5s)
+  const [saved, setSaved] = useState(false);
+
   // Hydrate when parent provides/changes `value`
   useEffect(() => {
     if (!value) return;
@@ -39,7 +42,7 @@ const [saved, setSaved] = useState(false);
     if (value.earliest_start) setEarliest(toInputDate(value.earliest_start));
   }, [value]);
 
-  // Auto-hide success after 3 seconds
+  // Auto-hide success banner after 3 seconds
   useEffect(() => {
     if (!savedOk) return;
     const t = setTimeout(() => setSavedOk(false), 3000);
@@ -130,6 +133,10 @@ const [saved, setSaved] = useState(false);
     try {
       await onSave(payload);   // parent handles PUT and error state
       setSavedOk(true);        // show success banner
+
+      // NEW: show “Saved ✓” on the button for 2.5s
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
     } catch {
       // parent sets `error`; nothing to do here
     }
@@ -329,7 +336,8 @@ const [saved, setSaved] = useState(false);
               disabled={saving}
               style={{
                 padding: "8px 12px",
-                background: "#2563EB",
+                // NEW: turn green while in "Saved ✓" state
+                background: saved ? "#16A34A" : "#2563EB",
                 color: "#fff",
                 border: "none",
                 borderRadius: 8,
@@ -338,7 +346,11 @@ const [saved, setSaved] = useState(false);
                 opacity: saving ? 0.75 : 1,
               }}
             >
-              {saving ? L.saving[language] : L.save[language]}
+              {saving
+                ? L.saving[language]
+                : saved
+                  ? `${L.saved[language]} ✓`
+                  : L.save[language]}
             </button>
           </div>
         </>
