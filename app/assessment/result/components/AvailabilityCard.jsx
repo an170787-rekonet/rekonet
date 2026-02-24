@@ -20,17 +20,15 @@ export default function AvailabilityCard({
   const [maxTravel, setMaxTravel] = useState(30);
   const [earliest, setEarliest] = useState("");
 
-  // UI states
+  // UI
   const [savedOk, setSavedOk] = useState(false);
   const [saved, setSaved] = useState(false);
-
-  // NEW: inline validation error for PR‑5B
   const [localError, setLocalError] = useState("");
 
-  // Store original values for dirty-checking
+  // Snapshot of original values
   const [original, setOriginal] = useState(null);
 
-  // Hydrate from parent `value`
+  // Hydrate from `value`
   useEffect(() => {
     if (!value) return;
 
@@ -50,37 +48,67 @@ export default function AvailabilityCard({
       earliest: value.earliest_start ? toInputDate(value.earliest_start) : "",
     };
 
-    // set UI state
     setDays(initialObj.days);
     setTimes(initialObj.times);
     setContract(initialObj.contract);
     setMaxTravel(initialObj.maxTravel);
     setEarliest(initialObj.earliest);
 
-    // store original snapshot
     setOriginal(initialObj);
   }, [value]);
 
-  // Auto-hide green banner
+  // Auto-hide success banner
   useEffect(() => {
     if (!savedOk) return;
     const t = setTimeout(() => setSavedOk(false), 3000);
     return () => clearTimeout(t);
   }, [savedOk]);
 
-  // ---------- Labels ----------
+  // ---------- UK & Arabic Labels ----------
   const L = useMemo(
     () => ({
-      title: { en: "Availability", ar: "التوفر" },
-      daysYouCanWork: { en: "Days you can work", ar: "الأيام المتاحة" },
-      timesYouCanWork: { en: "Times you can work", ar: "الأوقات المتاحة" },
-      contractPref: { en: "Contract preference", ar: "نوع العقد المفضل" },
-      travel: { en: "Max travel time (minutes)", ar: "الحد الأقصى لوقت التنقل (دقائق)" },
-      earliest: { en: "Earliest start date", ar: "أقرب تاريخ بدء" },
-      save: { en: "Save availability", ar: "حفظ التوفر" },
-      saving: { en: "Saving…", ar: "جارٍ الحفظ…" },
-      saved: { en: "Saved", ar: "تم الحفظ" },
-      validation_days: { en: "Please select at least one working day.", ar: "الرجاء اختيار يوم واحد على الأقل." },
+      title: {
+        en: "Availability (Working Pattern)",
+        ar: "التوفر",
+      },
+      daysYouCanWork: {
+        en: "Days you are available",
+        ar: "الأيام المتاحة",
+      },
+      timesYouCanWork: {
+        en: "Times you are available",
+        ar: "الأوقات المتاحة",
+      },
+      contractPref: {
+        en: "Working pattern preference",
+        ar: "نوع العقد المفضل",
+      },
+      travel: {
+        en: "Maximum commute time (minutes)",
+        ar: "الحد الأقصى لوقت التنقل (دقائق)",
+      },
+      earliest: {
+        en: "Earliest possible start date",
+        ar: "أقرب تاريخ بدء",
+      },
+      save: {
+        en: "Save availability details",
+        ar: "حفظ التوفر",
+      },
+      saving: {
+        en: "Saving…",
+        ar: "جارٍ الحفظ…",
+      },
+      saved: {
+        en: "Saved",
+        ar: "تم الحفظ",
+      },
+      validation_days: {
+        en: "Please select at least one working day.",
+        ar: "الرجاء اختيار يوم واحد على الأقل.",
+      },
+
+      // Day labels unchanged
       mon: { en: "MON", ar: "الإثنين" },
       tue: { en: "TUE", ar: "الثلاثاء" },
       wed: { en: "WED", ar: "الأربعاء" },
@@ -88,9 +116,13 @@ export default function AvailabilityCard({
       fri: { en: "FRI", ar: "الجمعة" },
       sat: { en: "SAT", ar: "السبت" },
       sun: { en: "SUN", ar: "الأحد" },
+
+      // Times
       morning: { en: "morning", ar: "الصباح" },
       afternoon: { en: "afternoon", ar: "بعد الظهر" },
       evening: { en: "evening", ar: "المساء" },
+
+      // Contracts
       full_time: { en: "Full-time", ar: "دوام كامل" },
       part_time: { en: "Part-time", ar: "دوام جزئي" },
       weekends: { en: "Weekends", ar: "عطلات نهاية الأسبوع" },
@@ -102,11 +134,29 @@ export default function AvailabilityCard({
   // ---------- Helpers ----------
   function normalizeDays(arr) {
     const map = {
-      mon: "mon", tue: "tue", wed: "wed", thu: "thu", fri: "fri", sat: "sat", sun: "sun",
-      monday: "mon", tuesday: "tue", wednesday: "wed", thursday: "thu", friday: "fri",
-      saturday: "sat", sunday: "sun",
-      MON: "mon", TUE: "tue", WED: "wed", THU: "thu", FRI: "fri", SAT: "sat", SUN: "sun",
+      mon: "mon",
+      tue: "tue",
+      wed: "wed",
+      thu: "thu",
+      fri: "fri",
+      sat: "sat",
+      sun: "sun",
+      monday: "mon",
+      tuesday: "tue",
+      wednesday: "wed",
+      thursday: "thu",
+      friday: "fri",
+      saturday: "sat",
+      sunday: "sun",
+      MON: "mon",
+      TUE: "tue",
+      WED: "wed",
+      THU: "thu",
+      FRI: "fri",
+      SAT: "sat",
+      SUN: "sun",
     };
+
     const out = [];
     for (const d of arr) {
       const k = String(d).trim().toLowerCase();
@@ -119,10 +169,11 @@ export default function AvailabilityCard({
     try {
       if (!v) return "";
       const d = new Date(v);
-      if (Number.isNaN(d.getTime())) return "";
-      return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(
-        d.getUTCDate()
-      ).padStart(2, "0")}`;
+      if (isNaN(d.getTime())) return "";
+      return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(
+        2,
+        "0"
+      )}-${String(d.getUTCDate()).padStart(2, "0")}`;
     } catch {
       return "";
     }
@@ -131,7 +182,7 @@ export default function AvailabilityCard({
   const dayKeys = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
   const dir = isRTL ? "rtl" : "ltr";
 
-  // ---------- Detect if form changed ----------
+  // ---------- Dirty check ----------
   const currentSnapshot = {
     days,
     times,
@@ -143,15 +194,13 @@ export default function AvailabilityCard({
   const isDirty =
     original && JSON.stringify(currentSnapshot) !== JSON.stringify(original);
 
-  // ---------- Inline validation ----------
-  const isValid = days.length > 0; // must pick at least 1 day
-
-  // Combined disabled logic:
+  // ---------- Validation ----------
+  const isValid = days.length > 0;
   const disableSave = saving || !isDirty || !isValid;
 
   // ---------- UI Handlers ----------
   function toggleDay(k) {
-    setLocalError(""); // clear inline error
+    setLocalError("");
     setDays((prev) =>
       prev.includes(k) ? prev.filter((x) => x !== k) : [...prev, k]
     );
@@ -162,7 +211,6 @@ export default function AvailabilityCard({
   }
 
   async function handleSave() {
-    // Inline validation
     if (days.length === 0) {
       setLocalError(L.validation_days[language]);
       return;
@@ -181,17 +229,12 @@ export default function AvailabilityCard({
     try {
       await onSave(payload);
 
-      // Reset inline error
       setLocalError("");
-
-      // Banner
       setSavedOk(true);
 
-      // Button state
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
 
-      // Reset original snapshot
       setOriginal({
         days,
         times,
@@ -199,9 +242,7 @@ export default function AvailabilityCard({
         maxTravel: Number(maxTravel),
         earliest,
       });
-    } catch {
-      /* parent handles error */
-    }
+    } catch {}
   }
 
   // ---------- Render ----------
@@ -236,8 +277,8 @@ export default function AvailabilityCard({
                 return (
                   <button
                     key={k}
-                    type="button"
                     onClick={() => toggleDay(k)}
+                    type="button"
                     style={{
                       padding: "6px 10px",
                       borderRadius: 999,
@@ -255,7 +296,7 @@ export default function AvailabilityCard({
               })}
             </div>
 
-            {/* INLINE VALIDATION MESSAGE */}
+            {/* Inline Validation */}
             {localError && (
               <div style={{ color: "#b91c1c", fontSize: 12, marginTop: 4 }}>
                 {localError}
@@ -275,8 +316,8 @@ export default function AvailabilityCard({
                 return (
                   <button
                     key={t}
-                    type="button"
                     onClick={() => toggleTime(t)}
+                    type="button"
                     style={{
                       padding: "6px 10px",
                       borderRadius: 999,
@@ -296,12 +337,11 @@ export default function AvailabilityCard({
             </div>
           </div>
 
-          {/* Contract + Travel + Start Date */}
+          {/* Contract + travel + date */}
           <div
             style={{
               display: "grid",
               gridTemplateColumns: "1.2fr 1fr 0.8fr",
-              alignItems: "center",
               gap: 12,
               marginTop: 12,
             }}
@@ -311,7 +351,6 @@ export default function AvailabilityCard({
               <div style={{ fontSize: 12, color: "#374151", marginBottom: 6 }}>
                 {L.contractPref[language]}
               </div>
-
               <select
                 value={contract}
                 onChange={(e) => setContract(e.target.value)}
@@ -370,7 +409,7 @@ export default function AvailabilityCard({
             </div>
           </div>
 
-          {/* Messages (server error or success) */}
+          {/* Banner or server error */}
           {error ? (
             <div style={{ color: "#b91c1c", marginTop: 8, fontSize: 12 }}>
               {error}
@@ -391,18 +430,18 @@ export default function AvailabilityCard({
             </div>
           ) : null}
 
-          {/* Save Button */}
+          {/* Save */}
           <div style={{ marginTop: 10 }}>
             <button
-              type="button"
               onClick={handleSave}
               disabled={disableSave}
+              type="button"
               style={{
                 padding: "8px 12px",
                 background: saved ? "#16A34A" : "#2563EB",
                 color: "#fff",
-                border: "none",
                 borderRadius: 8,
+                border: "none",
                 fontWeight: 700,
                 cursor: disableSave ? "not-allowed" : "pointer",
                 opacity: disableSave ? 0.75 : 1,
@@ -411,8 +450,8 @@ export default function AvailabilityCard({
               {saving
                 ? L.saving[language]
                 : saved
-                  ? `${L.saved[language]} ✓`
-                  : L.save[language]}
+                ? `${L.saved[language]} ✓`
+                : L.save[language]}
             </button>
           </div>
         </>
