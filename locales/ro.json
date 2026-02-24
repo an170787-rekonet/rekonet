@@ -1,0 +1,10 @@
+{
+  "interview": {
+    "title": "Simulator de interviu",
+    "intro": "Răspunde folosind metoda STAR.",
+    "submit": "Trimite răspunsurile",
+    "score": "Scorul tău",
+    "hint_star": "STAR = Situație, Sarcină, Acțiune, Rezultat — explică pe scurt.",
+    "guidance_en_only": "Întrebările rămân în engleză, dar instrucțiunile sunt în limba ta."
+  }
+}
