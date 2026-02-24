@@ -1,0 +1,10 @@
+{
+  "interview": {
+    "title": "Simulateur d’entretien",
+    "intro": "Répondez en utilisant la méthode STAR.",
+    "submit": "Envoyer les réponses",
+    "score": "Votre score",
+    "hint_star": "STAR = Situation, Tâche, Action, Résultat — expliquez brièvement.",
+    "guidance_en_only": "Les questions restent en anglais, mais les consignes sont dans votre langue."
+  }
+}
