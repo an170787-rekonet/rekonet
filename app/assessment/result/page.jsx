@@ -1,7 +1,7 @@
 // app/assessment/result/page.jsx
 "use client";
 
-import { Suspense, useMemo } from "react";
+import { Suspense, useMemo, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import ResultView from "./ResultView";
 
@@ -29,44 +29,48 @@ function ResultInner() {
   );
 
   /**
-   * Label overrides
-   * We send these down so the UI can use friendlier phrasing.
-   * If ResultView already accepts a different prop name (e.g., `labels`, `strings`, `copy`),
-   * rename `uiLabels` below to match.
-   *
-   * You can extend this map for other languages later.
+   * TEMPORARY OVERRIDE:
+   * Swap any visible "Show my gaps" button text to "Show next steps".
+   * This runs after render and retries a few times as the content loads.
+   * We can remove this once we change the source label in the component/strings file.
    */
-  const uiLabels = useMemo(() => {
-    const byLang = {
-      en: {
-        showGapsButton: "Show next steps",   // <-- replaces "Show my gaps"
-        // You can add more overrides here if needed, e.g.:
-        // gapsTabTitle: "Next steps",
-        // gapsSectionHeading: "Your next steps",
-      },
-      // Example future translations:
-      // es: { showGapsButton: "Ver siguientes pasos" },
-      // fr: { showGapsButton: "Voir les prochaines étapes" },
-      // pt: { showGapsButton: "Ver próximos passos" },
-      // ta: { showGapsButton: "அடுத்த படிகளை காட்டு" },
-      // uk: { showGapsButton: "Показати наступні кроки" },
-      // ar: { showGapsButton: "اعرض الخطوات التالية" },
+  useEffect(() => {
+    const TARGET_OLD = "Show my gaps";
+    const TARGET_NEW = "Show next steps";
+
+    const tryReplace = () => {
+      let changed = false;
+      const candidates = document.querySelectorAll(
+        "button, a, [role='button'], .btn, .tab, .chip"
+      );
+      candidates.forEach((el) => {
+        const txt = (el.textContent || "").trim();
+        if (txt === TARGET_OLD) {
+          el.textContent = TARGET_NEW;
+          changed = true;
+        }
+      });
+      return changed;
     };
 
-    return byLang[language] || byLang.en;
-  }, [language]);
+    // Run immediately, then retry a few times in case content renders later
+    if (!tryReplace()) {
+      const delays = [100, 300, 700, 1200, 2000];
+      const timers = delays.map((ms) => setTimeout(tryReplace, ms));
+      return () => timers.forEach(clearTimeout);
+    }
+  }, [language, assessmentId]);
 
   return (
     <ResultView
       assessmentId={assessmentId}
       language={language}
-      uiLabels={uiLabels}   // <-- NEW: pass friendly label(s) down
     />
   );
 }
 
 export default function Page() {
-  // Suspense wrapper is required for useSearchParams in a Client Component
+  // Suspense wrapper is required when using useSearchParams in a Client Component
   return (
     <Suspense fallback={<div />}>
       <ResultInner />
