@@ -80,6 +80,8 @@ function Chip({ href, children, lang = 'en' }) {
   return (
     <Link
       href={href}
+      target="_blank"
+      rel="noopener noreferrer"
       style={{
         display: 'inline-flex',
         alignItems: 'center',
@@ -434,7 +436,7 @@ export default function ResultView({ assessmentId, language, userId = null }) {
   if (err) return <main style={{ padding: 24, color: 'crimson' }}>{err}</main>;
   if (!data) return <main style={{ padding: 24 }}>No data.</main>;
 
-  const { summary, reflection, flightPath = [], progress, roleSuggestions = {}, path } = data || {};
+  const { summary, reflection, progress, roleSuggestions = {}, path } = data || {};
   const p = progress?.value ?? 0;
 
   /* ---------- Enhanced Role Ranking ---------- */
@@ -458,15 +460,39 @@ export default function ResultView({ assessmentId, language, userId = null }) {
     expRow: { display: 'flex', gap: 8, alignItems: 'center', marginTop: 20, marginBottom: 12 },
   };
 
+  /* --------------------------------------------------
+      UI LANGUAGE STRINGS
+  ---------------------------------------------------- */
   const ui = {
-    nextSteps: { en: 'Your next steps', ar: 'خطواتك التالية' },
+    nextStepsPanelTitle: { en: "Your next steps", ar: "خطواتك التالية" },
+    ctaContinue: { en: "Continue to your next step", ar: "تابع إلى خطوتك التالية" },
+
+    internalActions: { en: "Internal development actions", ar: "خطوات تطوير داخلية" },
+    externalCourses: { en: "External courses", ar: "دورات خارجية" },
+    externalRoles: { en: "External job roles matched to your CV", ar: "وظائف خارجية مناسبة لسيرتك الذاتية" },
+
+    suitableRoles: { en: "Best-fit roles for your CV (internal)", ar: "أفضل الأدوار المناسبة لسيرتك الذاتية (داخلي)" },
+    bridgeRolesLabel: { en: "Roles you're close to (internal)", ar: "أدوار قريبة منك (داخلي)" },
+
     suggestedRoles: { en: 'Suggested roles', ar: 'الأدوار المقترحة' },
     readyHeading: { en: 'Ready now', ar: 'جاهز الآن' },
     bridgeHeading: { en: 'Bridge roles (1–2 gaps)', ar: 'أدوار الجسر (فجوة أو فجوتان)' },
+
     progress: { en: 'Progress', ar: 'التقدّم' },
     alreadyHave: { en: 'Already have', ar: 'متوفر لديك' },
     gentlyMissing: { en: 'Gently missing', ar: 'قيد الإضافة' },
     suggestions: { en: 'Suggested next actions', ar: 'الإجراءات المقترحة' },
+  };
+
+  /* ---------- Scroll: CTA → Next Steps Panel ---------- */
+  const scrollToNextSteps = () => {
+    const el = document.getElementById("next-steps-panel");
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      el.style.transition = "box-shadow 0.3s ease";
+      el.style.boxShadow = "0 0 0 4px #a5b4fc inset";
+      setTimeout(() => { el.style.boxShadow = "none"; }, 1500);
+    }
   };
 
   /* ---------- Role Card ---------- */
@@ -538,8 +564,7 @@ export default function ResultView({ assessmentId, language, userId = null }) {
         />
 
         {Array.isArray(item.gaps) &&
-          item.gaps.length > 0 &&
-          (
+          item.gaps.length > 0 && (
             <ul style={{ color: '#555', margin: '6px 0 0 16px' }}>
               {item.gaps.map((g, i) => {
                 const t = String(g?.type || '').toLowerCase();
@@ -547,7 +572,7 @@ export default function ResultView({ assessmentId, language, userId = null }) {
                 return <li key={i}>{t ? `${t}: ${k}` : k}</li>;
               })}
             </ul>
-          )}
+        )}
       </article>
     );
   }
@@ -557,6 +582,24 @@ export default function ResultView({ assessmentId, language, userId = null }) {
     <main dir={language === 'ar' ? 'rtl' : 'ltr'} style={styles.container}>
       <h2 style={{ marginTop: 0 }}>{summary?.headline || 'Your starting point'}</h2>
       <p style={{ color: '#444', marginTop: 4 }}>{summary?.message}</p>
+
+      {/* CTA button */}
+      <button
+        onClick={scrollToNextSteps}
+        style={{
+          marginTop: 12,
+          marginBottom: 20,
+          padding: "10px 16px",
+          borderRadius: 8,
+          background: "#6366F1",
+          border: "1px solid #4F46E5",
+          color: "white",
+          fontSize: 15,
+          cursor: "pointer",
+        }}
+      >
+        {ui.ctaContinue[language]}
+      </button>
 
       <SupportBand
         lang={language}
@@ -585,6 +628,7 @@ export default function ResultView({ assessmentId, language, userId = null }) {
         }}
       />
 
+      {/* GOAL PANEL */}
       {goalPlan && goalPlan.ok ? (
         <section
           dir={language === 'ar' ? 'rtl' : 'ltr'}
@@ -598,8 +642,7 @@ export default function ResultView({ assessmentId, language, userId = null }) {
           }}
         >
           <h3 style={{ marginTop: 0 }}>
-            {language === 'ar' ? 'هدفي — إرشادات' : 'My goal — guidance'} —{' '}
-            {goalPlan.goal}
+            {language === 'ar' ? 'هدفي — إرشادات' : 'My goal — guidance'} — {goalPlan.goal}
           </h3>
 
           <div style={{ marginTop: 8 }}>
@@ -625,8 +668,7 @@ export default function ResultView({ assessmentId, language, userId = null }) {
           <div style={{ marginTop: 12 }}>
             <strong>{ui.gentlyMissing[language]}:</strong>
 
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap',
-                           marginTop: 6 }}>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
               {(goalPlan.gentlyMissing || []).length > 0
                 ? goalPlan.gentlyMissing.map((k) => (
                     <span
@@ -678,6 +720,7 @@ export default function ResultView({ assessmentId, language, userId = null }) {
         </div>
       )}
 
+      {/* EXPERIENCE */}
       <div style={styles.expRow}>
         <small style={{ color: '#6B7280' }}>
           Total experience: <strong>{totalMonths}</strong> month(s)
@@ -702,10 +745,11 @@ export default function ResultView({ assessmentId, language, userId = null }) {
 
       {showExpForm && userId && (
         <div style={{ marginTop: 12 }}>
-          {/* Experience Form lives above */}
+          {/* Experience Form Placeholder */}
         </div>
       )}
 
+      {/* PROGRESS */}
       <section style={{ margin: '20px 0' }}>
         <label style={{ display: 'block', marginBottom: 8 }}>
           <strong>{ui.progress[language]}</strong>
@@ -721,6 +765,146 @@ export default function ResultView({ assessmentId, language, userId = null }) {
         )}
       </section>
 
+      {/* --------------------------------------------------------
+            NEXT STEPS PANEL (NEW)
+         -------------------------------------------------------- */}
+      <section
+        id="next-steps-panel"
+        dir={language === "ar" ? "rtl" : "ltr"}
+        style={{
+          marginTop: 30,
+          padding: 18,
+          border: "1px solid #e5e7eb",
+          borderRadius: 10,
+          background: "white",
+        }}
+      >
+        <h3 style={{ marginTop: 0, marginBottom: 12 }}>
+          {ui.nextStepsPanelTitle[language]}
+        </h3>
+
+        {/* INTERNAL ACTIONS */}
+        <div>
+          <h4 style={{ margin: "6px 0" }}>
+            {ui.internalActions[language]}
+          </h4>
+
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 6 }}>
+            <Chip href={`/activities/cv-ats-1?${qs}`} lang={language}>
+              ATS CV tune (10 min)
+            </Chip>
+            <Chip href={`/activities/int-star-1?${qs}`} lang={language}>
+              Create 3 STAR stories
+            </Chip>
+          </div>
+        </div>
+
+        {/* EXTERNAL COURSES */}
+        <div style={{ marginTop: 24 }}>
+          <h4 style={{ margin: "6px 0" }}>
+            {ui.externalCourses[language]}
+          </h4>
+
+          <ul style={{ marginLeft: 16, marginTop: 6, color: "#374151" }}>
+            <li>
+              <a
+                href="https://alison.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: "#4f46e5" }}
+              >
+                Alison – Free sector-aligned courses
+              </a>
+            </li>
+            <li>
+              <a
+                href="https://www.futurelearn.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: "#4f46e5" }}
+              >
+                FutureLearn – Career-building mini courses
+              </a>
+            </li>
+            <li>
+              <a
+                href="https://www.udemy.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: "#4f46e5" }}
+              >
+                Udemy – Skill-based short courses
+              </a>
+            </li>
+          </ul>
+        </div>
+
+        {/* EXTERNAL JOB ROLES */}
+        <div style={{ marginTop: 24 }}>
+          <h4 style={{ margin: "6px 0" }}>
+            {ui.externalRoles[language]}
+          </h4>
+
+          <ul style={{ marginLeft: 16, marginTop: 6, color: "#374151" }}>
+            <li>
+              <a
+                href={`https://www.indeed.co.uk/jobs?q=${encodeURIComponent(goalPlan?.goal || '')}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: "#4f46e5" }}
+              >
+                Indeed – Roles aligned to your CV keywords
+              </a>
+            </li>
+            <li>
+              <a
+                href={`https://www.totaljobs.com/jobs/${encodeURIComponent(goalPlan?.goal || '')}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: "#4f46e5" }}
+              >
+                TotalJobs – Sector-matched listings
+              </a>
+            </li>
+          </ul>
+        </div>
+
+        {/* INTERNAL READY ROLES */}
+        <div style={{ marginTop: 24 }}>
+          <h4 style={{ margin: "6px 0" }}>
+            {ui.suitableRoles[language]}
+          </h4>
+
+          {rolesReady.length === 0 ? (
+            <p style={{ color: "#6b7280" }}>—</p>
+          ) : (
+            rolesReady.slice(0, 3).map((r) => (
+              <div key={`ns-ready-${r.title}`} style={{ marginBottom: 6 }}>
+                • {r.title}
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* INTERNAL BRIDGE ROLES */}
+        <div style={{ marginTop: 20 }}>
+          <h4 style={{ margin: "6px 0" }}>
+            {ui.bridgeRolesLabel[language]}
+          </h4>
+
+          {rolesBridge.length === 0 ? (
+            <p style={{ color: "#6b7280" }}>—</p>
+          ) : (
+            rolesBridge.slice(0, 3).map((r) => (
+              <div key={`ns-bridge-${r.title}`} style={{ marginBottom: 6 }}>
+                • {r.title}
+              </div>
+            ))
+          )}
+        </div>
+      </section>
+
+      {/* SUGGESTED ROLES SECTION */}
       <section style={{ marginTop: 24 }}>
         <h3 style={{ marginBottom: 8 }}>{ui.suggestedRoles[language]}</h3>
 
