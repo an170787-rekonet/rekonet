@@ -1,7 +1,7 @@
 // app/assessment/result/page.jsx
 "use client";
 
-import { Suspense, useMemo, useEffect } from "react";
+import { Suspense, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import ResultView from "./ResultView";
 
@@ -28,38 +28,8 @@ function ResultInner() {
     [sp]
   );
 
-  /**
-   * TEMPORARY OVERRIDE:
-   * Swap any visible "Show my gaps" button text to "Show next steps".
-   * This runs after render and retries a few times as the content loads.
-   * We can remove this once we change the source label in the component/strings file.
-   */
-  useEffect(() => {
-    const TARGET_OLD = "Show my gaps";
-    const TARGET_NEW = "Show next steps";
-
-    const tryReplace = () => {
-      let changed = false;
-      const candidates = document.querySelectorAll(
-        "button, a, [role='button'], .btn, .tab, .chip"
-      );
-      candidates.forEach((el) => {
-        const txt = (el.textContent || "").trim();
-        if (txt === TARGET_OLD) {
-          el.textContent = TARGET_NEW;
-          changed = true;
-        }
-      });
-      return changed;
-    };
-
-    // Run immediately, then retry a few times in case content renders later
-    if (!tryReplace()) {
-      const delays = [100, 300, 700, 1200, 2000];
-      const timers = delays.map((ms) => setTimeout(tryReplace, ms));
-      return () => timers.forEach(clearTimeout);
-    }
-  }, [language, assessmentId]);
+  // ❌ Removed the temporary DOM override
+  // No DOM manipulation, no forcing text swaps.
 
   return (
     <ResultView
