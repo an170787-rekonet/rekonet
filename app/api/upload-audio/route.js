@@ -4,16 +4,17 @@ import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY // server-side only
+  process.env.SUPABASE_SERVICE_ROLE_KEY // server-side only (never expose in client)
 );
 
-export const runtime = 'nodejs'; // ensure Node runtime for FormData/file handling
+// Force Node runtime so FormData/File uploads work reliably
+export const runtime = 'nodejs';
 
 export async function POST(req) {
   try {
-    // 1) Read multipart/form-data
+    // 1) Read multipart/form-data coming from the client
     const form = await req.formData();
-    const file = form.get('file'); // Blob/File (MediaRecorder output)
+    const file = form.get('file'); // Blob/File from <input type="file"> or MediaRecorder
     const userId = form.get('user_id') || 'anon';
     const roleId = form.get('role_id') || null;
     const durationMs = Number(form.get('duration_ms') || 0);
@@ -27,13 +28,14 @@ export async function POST(req) {
       (file.type && file.type.includes('webm')) ? 'webm' :
       (file.type && file.type.includes('mp4'))  ? 'mp4'  : 'webm';
 
-    // 3) Unique path inside the private 'audio' bucket
+    // 3) Unique object path inside your bucket
     const now = new Date().toISOString().replace(/[:.]/g, '-');
     const objectPath = `${userId}/${now}.${ext}`;
 
-    // 4) Upload to Supabase Storage
+    // 4) Upload into your EXISTING bucket: interview-audio (PUBLIC in your project)
     const { error: uploadError } = await supabase
-      .storage.from('audio')
+      .storage
+      .from('interview-audio')
       .upload(objectPath, file, {
         cacheControl: '3600',
         upsert: false,
@@ -44,16 +46,17 @@ export async function POST(req) {
       return NextResponse.json({ ok: false, error: uploadError.message }, { status: 500 });
     }
 
-    // 5) Signed URL (1 hour) for immediate playback
+    // 5) Get a signed URL (works even if bucket is public; keeps the API consistent)
     const { data: signed, error: signedErr } = await supabase
-      .storage.from('audio')
-      .createSignedUrl(objectPath, 60 * 60);
+      .storage
+      .from('interview-audio')
+      .createSignedUrl(objectPath, 60 * 60); // 1 hour
 
     if (signedErr) {
       return NextResponse.json({ ok: false, error: signedErr.message }, { status: 500 });
     }
 
-    // 6) (Optional) Save metadata once you create the table
+    // 6) OPTIONAL: Persist metadata once you create a table (commented out)
     // await supabase.from('audio_evidence').insert({
     //   user_id: userId,
     //   role_id: roleId,
