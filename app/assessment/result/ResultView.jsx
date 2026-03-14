@@ -134,20 +134,20 @@ function monthsToStage(totalMonths) {
 const UK_POSTCODE_REGEX = /\b([A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}|GIR ?0AA)\b/i;
 
 const IN_PERSON_WORDS = [
-  'assistant', 'advisor', 'associate', 'reception', 'front of house', 'warehouse', 'retail', 'store',
-  'customer service', 'call centre', 'contact centre', 'team member', 'host', 'server', 'barista', 'care assistant'
+  'assistant','advisor','associate','reception','front of house','warehouse','retail','store',
+  'customer service','call centre','contact centre','team member','host','server','barista','care assistant'
 ];
 
-const REMOTE_WORDS = ['remote', 'work from home', 'hybrid'];
-const PT_WORDS = ['part-time', 'part time', 'pt'];
-const WEEKEND_WORDS = ['weekend', 'saturday', 'sunday', 'weekends'];
-const EVENING_WORDS = ['evening', 'late', 'night', 'twilight', 'pm shift', 'night shift'];
-const MORNING_WORDS = ['morning', 'am shift', 'early'];
-const AFTERNOON_WORDS = ['afternoon', 'pm', 'day shift'];
+const REMOTE_WORDS = ['remote','work from home','hybrid'];
+const PT_WORDS = ['part-time','part time','pt'];
+const WEEKEND_WORDS = ['weekend','saturday','sunday','weekends'];
+const EVENING_WORDS = ['evening','late','night','twilight','pm shift','night shift'];
+const MORNING_WORDS = ['morning','am shift','early'];
+const AFTERNOON_WORDS = ['afternoon','pm','day shift'];
 
 function stringHitsAny(s = '', words = []) {
   const t = String(s).toLowerCase();
-  return words.some((w) => t.includes(w));
+  return words.some(w => t.includes(w));
 }
 
 function availabilityBoostForTitle(roleTitle = '', availability) {
@@ -787,7 +787,7 @@ export default function ResultView({ assessmentId, language, userId = null }) {
             style={{
               padding: '6px 10px',
               background: '#F3F4F6',
-              border: '1px solid '#E5E7EB',
+              border: '1px solid #E5E7EB',
               borderRadius: 8,
               fontSize: 12,
               cursor: 'pointer',
