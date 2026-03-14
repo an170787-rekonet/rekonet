@@ -10,6 +10,7 @@ export default function EvidencePage() {
     try {
       setLoading(true);
       setErr('');
+      // 👇 No-store to avoid client-side caching
       const res = await fetch('/api/evidence/recent', { cache: 'no-store' });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data?.ok) throw new Error(data?.error || 'Failed to load evidence');
@@ -26,7 +27,7 @@ export default function EvidencePage() {
   return (
     <div style={{ maxWidth: 900, margin: '40px auto', padding: '0 16px', fontFamily: 'system-ui, Arial' }}>
       <h1>Audio Evidence</h1>
-      <p>Latest uploads (most recent first). Each item includes a 1‑hour signed link for playback.</p>
+      <p>Latest uploads (most recent first). Each item includes a 1-hour signed link for playback.</p>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
         <button onClick={load} style={{ padding: '8px 12px', background: '#111', color: '#fff', borderRadius: 6, border: 0 }}>
