@@ -1,12 +1,12 @@
 // app/assessment/result/page.jsx
-"use client";
+'use client';
 
-import { Suspense, useMemo } from "react";
-import { useSearchParams } from "next/navigation";
-import ResultView from "./ResultView";
+import { Suspense, useMemo } from 'react';
+import { useSearchParams } from 'next/navigation';
+import ResultView from './ResultView';
 
 // Keep dynamic so we don't prerender with unknown params
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 function ResultInner() {
   const sp = useSearchParams();
@@ -14,23 +14,21 @@ function ResultInner() {
   // Read assessment id from the URL (support multiple keys)
   const assessmentId = useMemo(() => {
     return (
-      sp.get("id") ||            // primary key
-      sp.get("uuid") ||          // fallback
-      sp.get("assessment_id") || // legacy fallback
-      sp.get("assessmentId") ||  // legacy fallback
-      ""
+      sp.get('id') ||            // primary key
+      sp.get('uuid') ||          // fallback
+      sp.get('assessment_id') || // legacy fallback
+      sp.get('assessmentId') ||  // legacy fallback
+      ''
     );
   }, [sp]);
 
   // Read language (default to en)
   const language = useMemo(
-    () => (sp.get("language") || sp.get("lang") || "en").toLowerCase(),
+    () => (sp.get('language') || sp.get('lang') || 'en').toLowerCase(),
     [sp]
   );
 
-  // ❌ Removed the temporary DOM override
-  // No DOM manipulation, no forcing text swaps.
-
+  // Render the real results view; we'll enhance ResultView.jsx next
   return (
     <ResultView
       assessmentId={assessmentId}
