@@ -2,15 +2,14 @@
 import { useEffect, useRef, useState } from 'react';
 
 /**
- * Minimal Recorder Page: Record → Stop → Upload → Play
- * - Uses MediaRecorder (browser) to capture mic as audio/webm.
- * - On Stop: uploads blob to /api/upload-audio as multipart/form-data.
- * - Expects API to return: { ok, path, signedUrl, mime, durationMs }.
- * - Shows an <audio> player bound to the signed URL.
+ * Recorder (Test) — Record → Stop → Upload → Play
+ * - Uses MediaRecorder to capture mic as audio/webm (Opus).
+ * - On Stop: computes duration synchronously, uploads to /api/upload-audio,
+ *   and shows an <audio> player using the signed URL returned by the API.
  *
  * Notes:
- * - Works in Chrome/Edge. Safari may use audio/mp4; this page requests webm first.
- * - If permissions are blocked, you’ll see an error with a help tip.
+ * - Works reliably in Chrome/Edge. Safari support for MediaRecorder may vary.
+ * - If permissions are blocked, you’ll see a helpful error.
  */
 
 export default function RecorderPage() {
@@ -30,7 +29,11 @@ export default function RecorderPage() {
 
   useEffect(() => {
     // Feature detection
-    if (typeof window === 'undefined' || !navigator?.mediaDevices?.getUserMedia || !window.MediaRecorder) {
+    if (
+      typeof window === 'undefined' ||
+      !navigator?.mediaDevices?.getUserMedia ||
+      !window.MediaRecorder
+    ) {
       setIsSupported(false);
     }
     return () => {
@@ -54,12 +57,13 @@ export default function RecorderPage() {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       mediaStreamRef.current = stream;
 
-      // Try webm; browsers that don’t support it will throw, we’ll catch and show a message.
+      // Request webm/opus; if unsupported, the constructor will throw.
       const options = { mimeType: 'audio/webm;codecs=opus' };
       const mr = new MediaRecorder(stream, options);
       mediaRecorderRef.current = mr;
 
       chunksRef.current = [];
+
       mr.ondataavailable = (e) => {
         if (e.data && e.data.size > 0) chunksRef.current.push(e.data);
       };
@@ -72,13 +76,15 @@ export default function RecorderPage() {
         }, 100);
       };
 
+      // ⬇⬇ KEY FIX: compute duration synchronously at stop (not from possibly stale state)
       mr.onstop = async () => {
         if (timerRef.current) clearInterval(timerRef.current);
         setIsRecording(false);
         stopTracks(mediaStreamRef.current);
 
         const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
-        await handleStopRecording(blob, elapsedMs);
+        const ms = Math.max(0, Date.now() - (startedAtRef.current || Date.now()));
+        await handleStopRecording(blob, ms);
       };
 
       mr.start();
@@ -106,7 +112,7 @@ export default function RecorderPage() {
     form.append('file', file);
     form.append('user_id', userId);
     if (roleId) form.append('role_id', roleId);
-    if (durationMs) form.append('duration_ms', String(durationMs));
+    if (typeof durationMs === 'number') form.append('duration_ms', String(durationMs));
 
     const res = await fetch('/api/upload-audio', { method: 'POST', body: form });
     const data = await res.json().catch(() => ({}));
@@ -119,9 +125,14 @@ export default function RecorderPage() {
   async function handleStopRecording(blob, ms) {
     try {
       setUploading(true);
-      const result = await uploadAudioBlob(blob, { userId: 'anon', roleId: 'interview', durationMs: ms });
+      const result = await uploadAudioBlob(blob, {
+        userId: 'anon',               // Replace with a real UUID when auth is wired
+        roleId: 'interview',
+        durationMs: ms,               // <-- send the freshly computed duration
+      });
       setPlaybackUrl(result.signedUrl);
       setLastPath(result.path || '');
+      setElapsedMs(ms);
     } catch (e) {
       console.error(e);
       setError(e.message || 'Upload failed');
