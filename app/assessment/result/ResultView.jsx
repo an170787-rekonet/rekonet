@@ -21,29 +21,29 @@ import AvailabilityCard from './components/AvailabilityCard';
    Support band (Path + Experience + Readiness)
 ---------------------------------------------------------- */
 function SupportBand({ lang = 'en', path, readiness, experienceStage }) {
-  const isRTL = lang === 'ar';
+  const isRTL = ['ar', 'ur'].includes(lang);
   const r = Number(readiness ?? 0);
 
   const L = {
-    path: { en: 'Path', ar: 'المسار' },
-    ready: { en: 'Readiness', ar: 'الجاهزية' },
-    exp: { en: 'Experience', ar: 'الخبرة' },
-    expNew: { en: 'New', ar: 'جديد' },
-    expGrowing: { en: 'Growing', ar: 'في تطوّر' },
-    expSolid: { en: 'Solid', ar: 'راسخ' },
-    expSeasoned: { en: 'Seasoned', ar: 'متمرّس' },
-    exploring: { en: 'Exploring', ar: 'استكشاف' },
-    soonReady: { en: 'Soon ready', ar: 'قريبًا جاهز' },
-    jobReady: { en: 'Job ready', ar: 'جاهز للعمل' },
+    path: { en: 'Path', ar: 'المسار', ur: 'راہ' },
+    ready: { en: 'Readiness', ar: 'الجاهزية', ur: 'تیاری' },
+    exp: { en: 'Experience', ar: 'الخبرة', ur: 'تجربہ' },
+    expNew: { en: 'New', ar: 'جديد', ur: 'نیا' },
+    expGrowing: { en: 'Growing', ar: 'في تطوّر', ur: 'ترقی پر' },
+    expSolid: { en: 'Solid', ar: 'راسخ', ur: 'مضبوط' },
+    expSeasoned: { en: 'Seasoned', ar: 'متمرّس', ur: 'ماہر' },
+    exploring: { en: 'Exploring', ar: 'استكشاف', ur: 'جستجو' },
+    soonReady: { en: 'Soon ready', ar: 'قريبًا جاهز', ur: 'جلد تیار' },
+    jobReady: { en: 'Job ready', ar: 'جاهز للعمل', ur: 'ملازمت کے لیے تیار' },
   };
 
   const stageKey = r >= 100 ? 'jobReady' : r >= 50 ? 'soonReady' : 'exploring';
 
   const expLabel = {
-    New: L.expNew[lang],
-    Growing: L.expGrowing[lang],
-    Solid: L.expSolid[lang],
-    Seasoned: L.expSeasoned[lang],
+    New: L.expNew[lang] || L.expNew.en,
+    Growing: L.expGrowing[lang] || L.expGrowing.en,
+    Solid: L.expSolid[lang] || L.expSolid.en,
+    Seasoned: L.expSeasoned[lang] || L.expSeasoned.en,
   }[experienceStage || 'New'];
 
   return (
@@ -62,15 +62,15 @@ function SupportBand({ lang = 'en', path, readiness, experienceStage }) {
       }}
     >
       <div style={{ fontSize: 14, color: '#374151' }}>
-        <strong>{L.path[lang]}: </strong>
-        {L[stageKey][lang]}
+        <strong>{(L.path[lang] || L.path.en) + ': '}</strong>
+        {L[stageKey][lang] || L[stageKey].en}
       </div>
       <div style={{ fontSize: 14, color: '#374151' }}>
-        <strong>{L.exp[lang]}: </strong>
+        <strong>{(L.exp[lang] || L.exp.en) + ': '}</strong>
         {expLabel}
       </div>
       <div style={{ fontSize: 14, color: '#374151' }}>
-        <strong>{L.ready[lang]}: </strong>
+        <strong>{(L.ready[lang] || L.ready.en) + ': '}</strong>
         {Number.isFinite(r) ? `${r}%` : '—'}
       </div>
     </section>
@@ -81,7 +81,7 @@ function SupportBand({ lang = 'en', path, readiness, experienceStage }) {
    Tiny chip UI
 ---------------------------------------------------------- */
 function Chip({ href, children, lang = 'en' }) {
-  const isRTL = lang === 'ar';
+  const isRTL = ['ar', 'ur'].includes(lang);
   return (
     <Link
       href={href}
@@ -147,7 +147,7 @@ const AFTERNOON_WORDS = ['afternoon', 'pm', 'day shift'];
 
 function stringHitsAny(s = '', words = []) {
   const t = String(s).toLowerCase();
-  return words.some(w => t.includes(w));
+  return words.some((w) => t.includes(w));
 }
 
 function availabilityBoostForTitle(roleTitle = '', availability) {
@@ -187,23 +187,24 @@ function availabilityWhy(availability, language = 'en') {
   const parts = [];
 
   const c = String(availability.contract || '').toLowerCase();
-  if (c === 'part_time') parts.push(language === 'ar' ? 'دوام جزئي' : 'part‑time');
-  else if (c === 'weekends') parts.push(language === 'ar' ? 'عطلات نهاية الأسبوع' : 'weekends');
-  else if (c === 'full_time') parts.push(language === 'ar' ? 'دوام كامل' : 'full‑time');
-  else if (c === 'any') parts.push(language === 'ar' ? 'مرن' : 'flexible');
+  if (c === 'part_time') parts.push(language === 'ar' ? 'دوام جزئي' : language === 'ur' ? 'جز وقتی' : 'part‑time');
+  else if (c === 'weekends') parts.push(language === 'ar' ? 'عطلات نهاية الأسبوع' : language === 'ur' ? 'ہفتہ وار چھٹیاں' : 'weekends');
+  else if (c === 'full_time') parts.push(language === 'ar' ? 'دوام كامل' : language === 'ur' ? 'مکمل وقت' : 'full‑time');
+  else if (c === 'any') parts.push(language === 'ar' ? 'مرن' : language === 'ur' ? 'لچکدار' : 'flexible');
 
   const t = availability.times || {};
   const tLabels = [];
-  if (t.morning) tLabels.push(language === 'ar' ? 'الصباح' : 'morning');
-  if (t.afternoon) tLabels.push(language === 'ar' ? 'بعد الظهر' : 'afternoon');
-  if (t.evening) tLabels.push(language === 'ar' ? 'المساء' : 'evening');
+  if (t.morning) tLabels.push(language === 'ar' ? 'الصباح' : language === 'ur' ? 'صبح' : 'morning');
+  if (t.afternoon) tLabels.push(language === 'ar' ? 'بعد الظهر' : language === 'ur' ? 'دوپہر' : 'afternoon');
+  if (t.evening) tLabels.push(language === 'ar' ? 'المساء' : language === 'ur' ? 'شام' : 'evening');
 
-  if (tLabels.length) parts.push(tLabels.join(language === 'ar' ? ' و' : ' & '));
-
+  if (tLabels.length) parts.push(tLabels.join(language === 'ar' || language === 'ur' ? ' و' : ' & '));
   if (parts.length === 0) return '';
 
   return language === 'ar'
     ? `متوافق مع توافرك (${parts.join('، ')}).`
+    : language === 'ur'
+    ? `آپ کی دستیابی سے مطابقت رکھتا ہے (${parts.join('، ')}).`
     : `Matches your availability (${parts.join(', ')}).`;
 }
 
@@ -538,6 +539,8 @@ export default function ResultView({ assessmentId, language, userId = null }) {
       boosted && variant === 'bridge'
         ? language === 'ar'
           ? 'دور الجسر يناسب توافرك ومسافة تنقلك.'
+          : language === 'ur'
+          ? 'برج رول آپ کی دستیابی اور سفر سے میل کھاتا ہے۔'
           : 'Bridge role that fits your availability and travel.'
         : '';
 
@@ -609,7 +612,7 @@ export default function ResultView({ assessmentId, language, userId = null }) {
 
   /* ---------- Render ---------- */
   return (
-    <main dir={language === 'ar' ? 'rtl' : 'ltr'} style={styles.container}>
+    <main dir={['ar', 'ur'].includes(language) ? 'rtl' : 'ltr'} style={styles.container}>
       {/* Language toggle (EA can flip to English while supporting PTP) */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
         <LanguageSwitcher language={(language || 'en').toLowerCase()} />
@@ -677,7 +680,7 @@ export default function ResultView({ assessmentId, language, userId = null }) {
       {/* GOAL PANEL (kept) */}
       {goalPlan && goalPlan.ok ? (
         <section
-          dir={language === 'ar' ? 'rtl' : 'ltr'}
+          dir={['ar', 'ur'].includes(language) ? 'rtl' : 'ltr'}
           style={{
             marginTop: 12,
             marginBottom: 20,
@@ -688,7 +691,12 @@ export default function ResultView({ assessmentId, language, userId = null }) {
           }}
         >
           <h3 style={{ marginTop: 0 }}>
-            {language === 'ar' ? 'هدفي — إرشادات' : 'My goal — guidance'} — {goalPlan.goal}
+            {language === 'ar'
+              ? 'هدفي — إرشادات'
+              : language === 'ur'
+              ? 'میرا ہدف — رہنمائی'
+              : 'My goal — guidance'}{' '}
+            — {goalPlan.goal}
           </h3>
 
           <div style={{ marginTop: 8 }}>
@@ -762,6 +770,8 @@ export default function ResultView({ assessmentId, language, userId = null }) {
         <div style={{ marginTop: 8, color: '#6b7280' }}>
           {language === 'ar'
             ? 'اختر هدفًا بالأعلى لعرض الإرشادات.'
+            : language === 'ur'
+            ? 'اوپر سے ایک ہدف منتخب کریں تاکہ رہنمائی نظر آئے۔'
             : 'Choose a goal above to see guidance.'}
         </div>
       )}
@@ -814,7 +824,7 @@ export default function ResultView({ assessmentId, language, userId = null }) {
       {/* NEXT STEPS PANEL (existing, kept) */}
       <section
         id="next-steps-panel"
-        dir={language === 'ar' ? 'rtl' : 'ltr'}
+        dir={['ar', 'ur'].includes(language) ? 'rtl' : 'ltr'}
         style={{
           marginTop: 30,
           padding: 18,
@@ -843,11 +853,9 @@ export default function ResultView({ assessmentId, language, userId = null }) {
           </div>
         </div>
 
-        {/* EXTERNAL COURSES (fixed anchors) */}
+        {/* EXTERNAL COURSES (valid anchors) */}
         <div style={{ marginTop: 24 }}>
-          <h4 style={{ margin: '6px 0' }}>
-            External courses
-          </h4>
+          <h4 style={{ margin: '6px 0' }}>External courses</h4>
 
           <ul style={{ marginLeft: 16, marginTop: 6, color: '#374151' }}>
             <li>
