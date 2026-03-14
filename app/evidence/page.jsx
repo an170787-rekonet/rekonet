@@ -10,7 +10,6 @@ export default function EvidencePage() {
     try {
       setLoading(true);
       setErr('');
-      // 👇 No-store to avoid client-side caching
       const res = await fetch('/api/evidence/recent', { cache: 'no-store' });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data?.ok) throw new Error(data?.error || 'Failed to load evidence');
@@ -19,6 +18,21 @@ export default function EvidencePage() {
       setErr(e.message || 'Unknown error');
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleDelete(id) {
+    if (!id) return;
+    const ok = confirm('Delete this recording? This cannot be undone.');
+    if (!ok) return;
+
+    try {
+      const res = await fetch(`/api/evidence/${id}`, { method: 'DELETE' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.ok) throw new Error(data?.error || 'Delete failed');
+      await load(); // reload the list
+    } catch (e) {
+      alert(e.message || 'Delete failed');
     }
   }
 
@@ -54,12 +68,19 @@ export default function EvidencePage() {
               <strong>duration:</strong> {typeof it.duration_ms === 'number' ? `${Math.round(it.duration_ms/1000)}s` : '—'} &nbsp; | &nbsp;
               <strong>mime:</strong> {it.mime || '—'}
             </div>
-            <div>
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
               {it.signedUrl ? (
                 <audio controls src={it.signedUrl} style={{ width: '100%' }} />
               ) : (
                 <div style={{ color: '#b91c1c' }}>Signed URL error: {it.signError || 'unknown'}</div>
               )}
+              <button
+                onClick={() => handleDelete(it.id)}
+                style={{ padding: '6px 10px', background: '#b91c1c', color: '#fff', borderRadius: 6, border: 0, whiteSpace: 'nowrap' }}
+                title="Delete recording"
+              >
+                Delete
+              </button>
             </div>
           </li>
         ))}
