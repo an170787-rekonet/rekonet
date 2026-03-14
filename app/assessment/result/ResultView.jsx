@@ -5,7 +5,12 @@ import { useEffect, useMemo, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { supabase } from '../../../lib/supabaseClient';
 
-// Components
+// New supportive Results components
+import SummaryBand from '../../components/results/SummaryBand';
+import GapChips from '../../components/results/GapChips';
+import RoleRecommendations from '../../components/results/RoleRecommendations';
+
+// Existing components
 import CvInsights from './components/CvInsights';
 import MyGoalForm from './components/MyGoalForm';
 import LiveJobsLinks from './components/LiveJobsLinks';
@@ -31,8 +36,7 @@ function SupportBand({ lang = 'en', path, readiness, experienceStage }) {
     jobReady: { en: 'Job ready', ar: 'جاهز للعمل' },
   };
 
-  const stageKey =
-    r >= 100 ? 'jobReady' : r >= 50 ? 'soonReady' : 'exploring';
+  const stageKey = r >= 100 ? 'jobReady' : r >= 50 ? 'soonReady' : 'exploring';
 
   const expLabel = {
     New: L.expNew[lang],
@@ -289,6 +293,25 @@ function enhanceRoles({
 }
 
 /* ---------------------------------------------------------
+   Helpers for new components
+---------------------------------------------------------- */
+function stageToLevel(stage) {
+  switch (stage) {
+    case 'New': return 1;
+    case 'Growing': return 2;
+    case 'Solid': return 3;
+    case 'Seasoned': return 4;
+    default: return 3;
+  }
+}
+
+function roleToJobsUrl(title) {
+  const q = encodeURIComponent(title || '');
+  // Simple UK Indeed search (can be swapped to your stabilised LiveJobsLinks later)
+  return `https://uk.indeed.com/jobs?q=${q}&fromage=7&sort=date`;
+}
+
+/* ---------------------------------------------------------
    MAIN COMPONENT
 ---------------------------------------------------------- */
 export default function ResultView({ assessmentId, language, userId = null }) {
@@ -464,15 +487,15 @@ export default function ResultView({ assessmentId, language, userId = null }) {
       UI LANGUAGE STRINGS
   ---------------------------------------------------- */
   const ui = {
-    nextStepsPanelTitle: { en: "Your next steps", ar: "خطواتك التالية" },
-    ctaContinue: { en: "Continue to your next step", ar: "تابع إلى خطوتك التالية" },
+    nextStepsPanelTitle: { en: 'Your next steps', ar: 'خطواتك التالية' },
+    ctaContinue: { en: 'Continue to your next step', ar: 'تابع إلى خطوتك التالية' },
 
-    internalActions: { en: "Internal development actions", ar: "خطوات تطوير داخلية" },
-    externalCourses: { en: "External courses", ar: "دورات خارجية" },
-    externalRoles: { en: "External job roles matched to your CV", ar: "وظائف خارجية مناسبة لسيرتك الذاتية" },
+    internalActions: { en: 'Internal development actions', ar: 'خطوات تطوير داخلية' },
+    externalCourses: { en: 'External courses', ar: 'دورات خارجية' },
+    externalRoles: { en: 'External job roles matched to your CV', ar: 'وظائف خارجية مناسبة لسيرتك الذاتية' },
 
-    suitableRoles: { en: "Best-fit roles for your CV (internal)", ar: "أفضل الأدوار المناسبة لسيرتك الذاتية (داخلي)" },
-    bridgeRolesLabel: { en: "Roles you're close to (internal)", ar: "أدوار قريبة منك (داخلي)" },
+    suitableRoles: { en: 'Best-fit roles for your CV (internal)', ar: 'أفضل الأدوار المناسبة لسيرتك الذاتية (داخلي)' },
+    bridgeRolesLabel: { en: "Roles you're close to (internal)", ar: 'أدوار الجسر (فجوة أو فجوتان)' },
 
     suggestedRoles: { en: 'Suggested roles', ar: 'الأدوار المقترحة' },
     readyHeading: { en: 'Ready now', ar: 'جاهز الآن' },
@@ -486,101 +509,64 @@ export default function ResultView({ assessmentId, language, userId = null }) {
 
   /* ---------- Scroll: CTA → Next Steps Panel ---------- */
   const scrollToNextSteps = () => {
-    const el = document.getElementById("next-steps-panel");
+    const el = document.getElementById('next-steps-panel');
     if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
-      el.style.transition = "box-shadow 0.3s ease";
-      el.style.boxShadow = "0 0 0 4px #a5b4fc inset";
-      setTimeout(() => { el.style.boxShadow = "none"; }, 1500);
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      el.style.transition = 'box-shadow 0.3s ease';
+      el.style.boxShadow = '0 0 0 4px #a5b4fc inset';
+      setTimeout(() => { el.style.boxShadow = 'none'; }, 1500);
     }
   };
 
-  /* ---------- Role Card ---------- */
-  function RoleCard({ item, variant }) {
-    const availLine = availabilityWhy(availability, language);
-    const boosted = ((item._availabilityBoost || 0) + (item._proximityBoost || 0)) > 0.2;
+  /* ---------- Build supportive pathway items for GapChips ---------- */
+  const pathwayItems = [
+    {
+      id: 'voice',
+      label: 'Add a short “Why I like working with people” example',
+      hint: 'Record 30–60 seconds showing your people focus.',
+      href: '/recorder',
+      actionText: 'Create quick example',
+    },
+    {
+      id: 'evidence',
+      label: 'Show a coordination win',
+      hint: 'Add one evidence item where you kept things organised and on time.',
+      href: '/evidence',
+      actionText: 'Add evidence',
+    },
+    {
+      id: 'cv-tune',
+      label: 'ATS CV tune (10 min)',
+      hint: 'Polish keywords to align with job descriptions.',
+      href: `/activities/cv-ats-1?${qs}`,
+      actionText: 'Open',
+    },
+  ];
 
-    const clarifier =
-      boosted && variant === 'bridge'
-        ? language === 'ar'
-          ? 'دور الجسر يناسب توافرك ومسافة تنقلك.'
-          : 'Bridge role that fits your availability and travel.'
-        : '';
-
-    return (
-      <article style={styles.card}>
-        <header
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 12,
-          }}
-        >
-          <h4 style={{ margin: 0, fontWeight: 600 }}>{item.title}</h4>
-
-          <span
-            style={{
-              fontSize: 12,
-              padding: '2px 8px',
-              borderRadius: 999,
-              ...(variant === 'ready'
-                ? {
-                    background: '#DCFCE7',
-                    color: '#166534',
-                    border: '1px solid #86efac',
-                  }
-                : {
-                    background: '#FEF3C7',
-                    color: '#92400E',
-                    border: '1px solid #fcd34d',
-                  }),
-            }}
-          >
-            {variant === 'ready'
-              ? ui.readyHeading[language]
-              : ui.bridgeHeading[language]}
-          </span>
-        </header>
-
-        {item.why && (
-          <p style={{ color: '#444', margin: '8px 0 4px' }}>{item.why}</p>
-        )}
-
-        {(availLine || clarifier) && (
-          <p style={{ color: '#475569', margin: '4px 0 8px', fontSize: 13 }}>
-            {clarifier ? clarifier + ' ' : ''}
-            {availLine}
-          </p>
-        )}
-
-        <LiveJobsLinks
-          goal={item.title}
-          level={experienceStage}
-          city={city}
-          keywords={cvSummary?.topKeywords || []}
-          language={language}
-          availability={availability}
-        />
-
-        {Array.isArray(item.gaps) &&
-          item.gaps.length > 0 && (
-            <ul style={{ color: '#555', margin: '6px 0 0 16px' }}>
-              {item.gaps.map((g, i) => {
-                const t = String(g?.type || '').toLowerCase();
-                const k = Array.isArray(g?.key) ? g.key.join(', ') : String(g?.key || '');
-                return <li key={i}>{t ? `${t}: ${k}` : k}</li>;
-              })}
-            </ul>
-        )}
-      </article>
-    );
-  }
+  /* ---------- Map rolesReady → RoleRecommendations.currentRoles ---------- */
+  const availLine = availabilityWhy(availability, language);
+  const currentRoles = rolesReady.slice(0, 3).map((r, i) => ({
+    id: `r${i + 1}`,
+    title: r.title,
+    link: roleToJobsUrl(r.title),
+    note: availLine || undefined,
+  }));
 
   /* ---------- Render ---------- */
   return (
     <main dir={language === 'ar' ? 'rtl' : 'ltr'} style={styles.container}>
-      <h2 style={{ marginTop: 0 }}>{summary?.headline || 'Your starting point'}</h2>
+      {/* Affirming results polish */}
+      <SummaryBand level={stageToLevel(experienceStage)} score={p} nextId="actions" />
+      <GapChips id="actions" title="Suggested next steps" items={pathwayItems} />
+      <RoleRecommendations
+        score={p}
+        goalTitle={goalPlan?.goal || 'your main career goal'}
+        currentRoles={currentRoles}
+        pathway={pathwayItems}
+      />
+
+      {/* Existing heading and message (kept) */}
+      <h2 style={{ marginTop: 16 }}>{summary?.headline || 'Your starting point'}</h2>
       <p style={{ color: '#444', marginTop: 4 }}>{summary?.message}</p>
 
       {/* CTA button */}
@@ -589,13 +575,13 @@ export default function ResultView({ assessmentId, language, userId = null }) {
         style={{
           marginTop: 12,
           marginBottom: 20,
-          padding: "10px 16px",
+          padding: '10px 16px',
           borderRadius: 8,
-          background: "#6366F1",
-          border: "1px solid #4F46E5",
-          color: "white",
+          background: '#6366F1',
+          border: '1px solid #4F46E5',
+          color: 'white',
           fontSize: 15,
-          cursor: "pointer",
+          cursor: 'pointer',
         }}
       >
         {ui.ctaContinue[language]}
@@ -732,7 +718,7 @@ export default function ResultView({ assessmentId, language, userId = null }) {
             style={{
               padding: '6px 10px',
               background: '#F3F4F6',
-              border: '1px solid #E5E7EB',
+              border: '1px solid '#E5E7EB',
               borderRadius: 8,
               fontSize: 12,
               cursor: 'pointer',
@@ -749,7 +735,7 @@ export default function ResultView({ assessmentId, language, userId = null }) {
         </div>
       )}
 
-      {/* PROGRESS */}
+      {/* PROGRESS (kept for visual meter) */}
       <section style={{ margin: '20px 0' }}>
         <label style={{ display: 'block', marginBottom: 8 }}>
           <strong>{ui.progress[language]}</strong>
@@ -766,17 +752,17 @@ export default function ResultView({ assessmentId, language, userId = null }) {
       </section>
 
       {/* --------------------------------------------------------
-            NEXT STEPS PANEL (NEW)
+            NEXT STEPS PANEL (existing, kept)
          -------------------------------------------------------- */}
       <section
         id="next-steps-panel"
-        dir={language === "ar" ? "rtl" : "ltr"}
+        dir={language === 'ar' ? 'rtl' : 'ltr'}
         style={{
           marginTop: 30,
           padding: 18,
-          border: "1px solid #e5e7eb",
+          border: '1px solid #e5e7eb',
           borderRadius: 10,
-          background: "white",
+          background: 'white',
         }}
       >
         <h3 style={{ marginTop: 0, marginBottom: 12 }}>
@@ -785,11 +771,11 @@ export default function ResultView({ assessmentId, language, userId = null }) {
 
         {/* INTERNAL ACTIONS */}
         <div>
-          <h4 style={{ margin: "6px 0" }}>
+          <h4 style={{ margin: '6px 0' }}>
             {ui.internalActions[language]}
           </h4>
 
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 6 }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
             <Chip href={`/activities/cv-ats-1?${qs}`} lang={language}>
               ATS CV tune (10 min)
             </Chip>
@@ -801,17 +787,17 @@ export default function ResultView({ assessmentId, language, userId = null }) {
 
         {/* EXTERNAL COURSES */}
         <div style={{ marginTop: 24 }}>
-          <h4 style={{ margin: "6px 0" }}>
+          <h4 style={{ margin: '6px 0' }}>
             {ui.externalCourses[language]}
           </h4>
 
-          <ul style={{ marginLeft: 16, marginTop: 6, color: "#374151" }}>
+          <ul style={{ marginLeft: 16, marginTop: 6, color: '#374151' }}>
             <li>
               <a
                 href="https://alison.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                style={{ color: "#4f46e5" }}
+                style={{ color: '#4f46e5' }}
               >
                 Alison – Free sector-aligned courses
               </a>
@@ -821,7 +807,7 @@ export default function ResultView({ assessmentId, language, userId = null }) {
                 href="https://www.futurelearn.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                style={{ color: "#4f46e5" }}
+                style={{ color: '#4f46e5' }}
               >
                 FutureLearn – Career-building mini courses
               </a>
@@ -831,7 +817,7 @@ export default function ResultView({ assessmentId, language, userId = null }) {
                 href="https://www.udemy.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                style={{ color: "#4f46e5" }}
+                style={{ color: '#4f46e5' }}
               >
                 Udemy – Skill-based short courses
               </a>
@@ -841,17 +827,17 @@ export default function ResultView({ assessmentId, language, userId = null }) {
 
         {/* EXTERNAL JOB ROLES */}
         <div style={{ marginTop: 24 }}>
-          <h4 style={{ margin: "6px 0" }}>
+          <h4 style={{ margin: '6px 0' }}>
             {ui.externalRoles[language]}
           </h4>
 
-          <ul style={{ marginLeft: 16, marginTop: 6, color: "#374151" }}>
+          <ul style={{ marginLeft: 16, marginTop: 6, color: '#374151' }}>
             <li>
               <a
                 href={`https://www.indeed.co.uk/jobs?q=${encodeURIComponent(goalPlan?.goal || '')}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                style={{ color: "#4f46e5" }}
+                style={{ color: '#4f46e5' }}
               >
                 Indeed – Roles aligned to your CV keywords
               </a>
@@ -861,7 +847,7 @@ export default function ResultView({ assessmentId, language, userId = null }) {
                 href={`https://www.totaljobs.com/jobs/${encodeURIComponent(goalPlan?.goal || '')}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                style={{ color: "#4f46e5" }}
+                style={{ color: '#4f46e5' }}
               >
                 TotalJobs – Sector-matched listings
               </a>
@@ -871,12 +857,12 @@ export default function ResultView({ assessmentId, language, userId = null }) {
 
         {/* INTERNAL READY ROLES */}
         <div style={{ marginTop: 24 }}>
-          <h4 style={{ margin: "6px 0" }}>
+          <h4 style={{ margin: '6px 0' }}>
             {ui.suitableRoles[language]}
           </h4>
 
           {rolesReady.length === 0 ? (
-            <p style={{ color: "#6b7280" }}>—</p>
+            <p style={{ color: '#6b7280' }}>—</p>
           ) : (
             rolesReady.slice(0, 3).map((r) => (
               <div key={`ns-ready-${r.title}`} style={{ marginBottom: 6 }}>
@@ -888,12 +874,12 @@ export default function ResultView({ assessmentId, language, userId = null }) {
 
         {/* INTERNAL BRIDGE ROLES */}
         <div style={{ marginTop: 20 }}>
-          <h4 style={{ margin: "6px 0" }}>
+          <h4 style={{ margin: '6px 0' }}>
             {ui.bridgeRolesLabel[language]}
           </h4>
 
           {rolesBridge.length === 0 ? (
-            <p style={{ color: "#6b7280" }}>—</p>
+            <p style={{ color: '#6b7280' }}>—</p>
           ) : (
             rolesBridge.slice(0, 3).map((r) => (
               <div key={`ns-bridge-${r.title}`} style={{ marginBottom: 6 }}>
@@ -904,7 +890,7 @@ export default function ResultView({ assessmentId, language, userId = null }) {
         </div>
       </section>
 
-      {/* SUGGESTED ROLES SECTION */}
+      {/* SUGGESTED ROLES SECTION (existing, kept) */}
       <section style={{ marginTop: 24 }}>
         <h3 style={{ marginBottom: 8 }}>{ui.suggestedRoles[language]}</h3>
 
