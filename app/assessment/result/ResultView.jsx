@@ -685,7 +685,7 @@ export default function ResultView({ assessmentId, language, userId = null }) {
             marginTop: 12,
             marginBottom: 20,
             padding: 12,
-            border: '1px solid '#e5e7eb',
+            border: '1px solid #e5e7eb',
             borderRadius: 8,
             background: '#fff',
           }}
@@ -787,7 +787,7 @@ export default function ResultView({ assessmentId, language, userId = null }) {
             style={{
               padding: '6px 10px',
               background: '#F3F4F6',
-              border: '1px solid #E5E7EB',
+              border: '1px solid '#E5E7EB',
               borderRadius: 8,
               fontSize: 12,
               cursor: 'pointer',
@@ -852,21 +852,13 @@ export default function ResultView({ assessmentId, language, userId = null }) {
           </div>
         </div>
 
-        {/* EXTERNAL COURSES — LDC added */}
+        {/* EXTERNAL COURSES — split into FREE and PAID */}
         <div style={{ marginTop: 24 }}>
           <h4 style={{ margin: '6px 0' }}>External courses</h4>
 
+          {/* FREE OPTIONS */}
+          <div style={{ marginTop: 8, marginBottom: 4, fontWeight: 600 }}>Free options</div>
           <ul style={{ marginLeft: 16, marginTop: 6, color: '#374151' }}>
-            <li>
-              <a
-                href="https://londondigitalcollege.com/"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ color: '#4f46e5' }}
-              >
-                London Digital College — Digital, care & business courses
-              </a>
-            </li>
             <li>
               <a
                 href="https://alison.com"
@@ -895,6 +887,21 @@ export default function ResultView({ assessmentId, language, userId = null }) {
                 style={{ color: '#4f46e5' }}
               >
                 Udemy — Skill‑based short courses
+              </a>
+            </li>
+          </ul>
+
+          {/* PAID OPTIONS */}
+          <div style={{ marginTop: 16, marginBottom: 4, fontWeight: 600 }}>Paid options</div>
+          <ul style={{ marginLeft: 16, marginTop: 6, color: '#374151' }}>
+            <li>
+              <a
+                href="https://londondigitalcollege.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: '#4f46e5' }}
+              >
+                London Digital College — Accredited courses in digital, care & business
               </a>
             </li>
           </ul>
