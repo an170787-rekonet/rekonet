@@ -2,9 +2,11 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
+// Create a Supabase client with Service Role (server-only)
+// NOTE: Never expose SERVICE_ROLE in client-side code.
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY // server-side only (never expose in client)
+  process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
 // Force Node runtime so FormData/File uploads work reliably
@@ -28,14 +30,14 @@ export async function POST(req) {
       (file.type && file.type.includes('webm')) ? 'webm' :
       (file.type && file.type.includes('mp4'))  ? 'mp4'  : 'webm';
 
-    // 3) Unique object path inside your bucket
+    // 3) Unique object path inside the bucket
     const now = new Date().toISOString().replace(/[:.]/g, '-');
     const objectPath = `${userId}/${now}.${ext}`;
 
-    // 4) Upload into your EXISTING bucket: interview-audio (PUBLIC in your project)
+    // 4) Upload into your PRIVATE bucket: 'audio'
     const { error: uploadError } = await supabase
       .storage
-      .from('interview-audio')
+      .from('audio')
       .upload(objectPath, file, {
         cacheControl: '3600',
         upsert: false,
@@ -46,17 +48,17 @@ export async function POST(req) {
       return NextResponse.json({ ok: false, error: uploadError.message }, { status: 500 });
     }
 
-    // 5) Get a signed URL (works even if bucket is public; keeps the API consistent)
+    // 5) Get a signed URL (works with private buckets)
     const { data: signed, error: signedErr } = await supabase
       .storage
-      .from('interview-audio')
+      .from('audio')
       .createSignedUrl(objectPath, 60 * 60); // 1 hour
 
     if (signedErr) {
       return NextResponse.json({ ok: false, error: signedErr.message }, { status: 500 });
     }
 
-    // 6) OPTIONAL: Persist metadata once you create a table (commented out)
+    // 6) OPTIONAL: Persist metadata once the table exists (uncomment when ready)
     // await supabase.from('audio_evidence').insert({
     //   user_id: userId,
     //   role_id: roleId,
