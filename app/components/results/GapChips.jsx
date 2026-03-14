@@ -1,16 +1,43 @@
 'use client';
 import React from 'react';
 
-export default function GapChips({ id = 'actions', title = 'Your supportive next steps', items = [] }) {
-  return (
-    <section id={id} style={{ marginTop: 20 }}>
-      <h3 style={{ marginBottom: 12 }}>{title}</h3>
+const COPY = {
+  en: {
+    title: 'Suggested next steps',
+    intro:
+      'These gentle, confidence‑building actions will help you align even more closely with your main career goals. You already have a strong foundation — these steps simply help showcase it even more.',
+    open: 'Open',
+    coming: 'Coming soon',
+  },
+  ar: {
+    title: 'الخطوات المقترحة',
+    intro:
+      'هذه الخطوات البسيطة المعززة للثقة تساعدك على مزيد من المواءمة مع أهدافك المهنية. لديك أساس قوي — وهذه الخطوات تُبرز ذلك أكثر.',
+    open: 'فتح',
+    coming: 'قريبًا',
+  },
+  es: {
+    title: 'Siguientes pasos sugeridos',
+    intro:
+      'Estas acciones sencillas y motivadoras te ayudarán a acercarte más a tus objetivos profesionales. Ya tienes una base sólida — estos pasos la destacarán aún más.',
+    open: 'Abrir',
+    coming: 'Próximamente',
+  },
+  fr: {
+    title: 'Prochaines étapes suggérées',
+    intro:
+      'Ces actions simples et valorisantes t’aideront à te rapprocher de tes objectifs. Tu as déjà une base solide — ces étapes la mettront encore plus en valeur.',
+    open: 'Ouvrir',
+    coming: 'Bientôt',
+  },
+};
 
-      <p style={{ fontSize: 15, marginBottom: 18, maxWidth: 580 }}>
-        These gentle, confidence‑building actions will help you align even more closely
-        with your main career goals. You already have a strong foundation — these steps
-        simply help showcase it even more.
-      </p>
+export default function GapChips({ id = 'actions', title, items = [], language = 'en' }) {
+  const L = COPY[language] || COPY.en;
+  return (
+    <section id={id} style={{ marginTop: 12 }}>
+      <h3 style={{ marginBottom: 8 }}>{title || L.title}</h3>
+      <p style={{ fontSize: 15, marginBottom: 16, maxWidth: 620 }}>{L.intro}</p>
 
       <ul
         style={{
@@ -18,7 +45,7 @@ export default function GapChips({ id = 'actions', title = 'Your supportive next
           padding: 0,
           margin: 0,
           display: 'grid',
-          gap: 16,
+          gap: 14,
           gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
         }}
       >
@@ -26,19 +53,16 @@ export default function GapChips({ id = 'actions', title = 'Your supportive next
           <li
             key={it.id}
             style={{
-              border: '1px solid #ededed',
+              border: '1px solid #eee',
               borderRadius: 12,
-              padding: 16,
-              background: '#ffffff',
+              padding: 14,
+              background: '#fff',
             }}
           >
-            <div style={{ fontWeight: 600, fontSize: 16 }}>{it.label}</div>
+            <div style={{ fontWeight: 600 }}>{it.label}</div>
+            {it.hint && <div style={{ fontSize: 13, color: '#555', marginTop: 6 }}>{it.hint}</div>}
 
-            {it.hint && (
-              <div style={{ fontSize: 14, color: '#555', marginTop: 6 }}>{it.hint}</div>
-            )}
-
-            <div style={{ marginTop: 14 }}>
+            <div style={{ marginTop: 12 }}>
               {it.href ? (
                 <a
                   href={it.href}
@@ -50,7 +74,7 @@ export default function GapChips({ id = 'actions', title = 'Your supportive next
                     textDecoration: 'none',
                   }}
                 >
-                  {it.actionText}
+                  {it.actionText || L.open}
                 </a>
               ) : (
                 <button
@@ -63,7 +87,7 @@ export default function GapChips({ id = 'actions', title = 'Your supportive next
                     border: 0,
                   }}
                 >
-                  {it.actionText}
+                  {it.actionText || L.coming}
                 </button>
               )}
             </div>
