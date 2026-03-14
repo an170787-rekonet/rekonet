@@ -685,7 +685,7 @@ export default function ResultView({ assessmentId, language, userId = null }) {
             marginTop: 12,
             marginBottom: 20,
             padding: 12,
-            border: '1px solid #e5e7eb',
+            border: '1px solid '#e5e7eb',
             borderRadius: 8,
             background: '#fff',
           }}
@@ -695,8 +695,7 @@ export default function ResultView({ assessmentId, language, userId = null }) {
               ? 'هدفي — إرشادات'
               : language === 'ur'
               ? 'میرا ہدف — رہنمائی'
-              : 'My goal — guidance'}{' '}
-            — {goalPlan.goal}
+              : 'My goal — guidance'} — {goalPlan.goal}
           </h3>
 
           <div style={{ marginTop: 8 }}>
@@ -853,11 +852,21 @@ export default function ResultView({ assessmentId, language, userId = null }) {
           </div>
         </div>
 
-        {/* EXTERNAL COURSES (valid anchors) */}
+        {/* EXTERNAL COURSES — LDC added */}
         <div style={{ marginTop: 24 }}>
           <h4 style={{ margin: '6px 0' }}>External courses</h4>
 
           <ul style={{ marginLeft: 16, marginTop: 6, color: '#374151' }}>
+            <li>
+              <a
+                href="https://londondigitalcollege.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: '#4f46e5' }}
+              >
+                London Digital College — Digital, care & business courses
+              </a>
+            </li>
             <li>
               <a
                 href="https://alison.com"
@@ -865,7 +874,7 @@ export default function ResultView({ assessmentId, language, userId = null }) {
                 rel="noopener noreferrer"
                 style={{ color: '#4f46e5' }}
               >
-                Alison – Free sector-aligned courses
+                Alison — Free sector‑aligned courses
               </a>
             </li>
             <li>
@@ -875,7 +884,7 @@ export default function ResultView({ assessmentId, language, userId = null }) {
                 rel="noopener noreferrer"
                 style={{ color: '#4f46e5' }}
               >
-                FutureLearn – Career-building mini courses
+                FutureLearn — Career‑building mini courses
               </a>
             </li>
             <li>
@@ -885,7 +894,7 @@ export default function ResultView({ assessmentId, language, userId = null }) {
                 rel="noopener noreferrer"
                 style={{ color: '#4f46e5' }}
               >
-                Udemy – Skill-based short courses
+                Udemy — Skill‑based short courses
               </a>
             </li>
           </ul>
@@ -905,7 +914,7 @@ export default function ResultView({ assessmentId, language, userId = null }) {
                 rel="noopener noreferrer"
                 style={{ color: '#4f46e5' }}
               >
-                Indeed – Roles aligned to your CV keywords
+                Indeed — Roles aligned to your CV keywords
               </a>
             </li>
             <li>
@@ -915,7 +924,7 @@ export default function ResultView({ assessmentId, language, userId = null }) {
                 rel="noopener noreferrer"
                 style={{ color: '#4f46e5' }}
               >
-                TotalJobs – Sector-matched listings
+                TotalJobs — Sector‑matched listings
               </a>
             </li>
           </ul>
@@ -924,7 +933,7 @@ export default function ResultView({ assessmentId, language, userId = null }) {
         {/* INTERNAL READY ROLES */}
         <div style={{ marginTop: 24 }}>
           <h4 style={{ margin: '6px 0' }}>
-            Best-fit roles for your CV (internal)
+            Best‑fit roles for your CV (internal)
           </h4>
 
           {rolesReady.length === 0 ? (
@@ -1001,4 +1010,3 @@ export default function ResultView({ assessmentId, language, userId = null }) {
     </main>
   );
 }
-``
