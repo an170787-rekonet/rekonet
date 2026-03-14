@@ -5,7 +5,8 @@ import { useEffect, useMemo, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { supabase } from '../../../lib/supabaseClient';
 
-// New supportive Results components
+// NEW: language toggle + localized components
+import LanguageSwitcher from '../../components/LanguageSwitcher';
 import SummaryBand from '../../components/results/SummaryBand';
 import GapChips from '../../components/results/GapChips';
 import RoleRecommendations from '../../components/results/RoleRecommendations';
@@ -307,7 +308,7 @@ function stageToLevel(stage) {
 
 function roleToJobsUrl(title) {
   const q = encodeURIComponent(title || '');
-  // Simple UK Indeed search (can be swapped to your stabilised LiveJobsLinks later)
+  // Use & not HTML entities
   return `https://uk.indeed.com/jobs?q=${q}&fromage=7&sort=date`;
 }
 
@@ -483,30 +484,6 @@ export default function ResultView({ assessmentId, language, userId = null }) {
     expRow: { display: 'flex', gap: 8, alignItems: 'center', marginTop: 20, marginBottom: 12 },
   };
 
-  /* --------------------------------------------------
-      UI LANGUAGE STRINGS
-  ---------------------------------------------------- */
-  const ui = {
-    nextStepsPanelTitle: { en: 'Your next steps', ar: 'خطواتك التالية' },
-    ctaContinue: { en: 'Continue to your next step', ar: 'تابع إلى خطوتك التالية' },
-
-    internalActions: { en: 'Internal development actions', ar: 'خطوات تطوير داخلية' },
-    externalCourses: { en: 'External courses', ar: 'دورات خارجية' },
-    externalRoles: { en: 'External job roles matched to your CV', ar: 'وظائف خارجية مناسبة لسيرتك الذاتية' },
-
-    suitableRoles: { en: 'Best-fit roles for your CV (internal)', ar: 'أفضل الأدوار المناسبة لسيرتك الذاتية (داخلي)' },
-    bridgeRolesLabel: { en: "Roles you're close to (internal)", ar: 'أدوار الجسر (فجوة أو فجوتان)' },
-
-    suggestedRoles: { en: 'Suggested roles', ar: 'الأدوار المقترحة' },
-    readyHeading: { en: 'Ready now', ar: 'جاهز الآن' },
-    bridgeHeading: { en: 'Bridge roles (1–2 gaps)', ar: 'أدوار الجسر (فجوة أو فجوتان)' },
-
-    progress: { en: 'Progress', ar: 'التقدّم' },
-    alreadyHave: { en: 'Already have', ar: 'متوفر لديك' },
-    gentlyMissing: { en: 'Gently missing', ar: 'قيد الإضافة' },
-    suggestions: { en: 'Suggested next actions', ar: 'الإجراءات المقترحة' },
-  };
-
   /* ---------- Scroll: CTA → Next Steps Panel ---------- */
   const scrollToNextSteps = () => {
     const el = document.getElementById('next-steps-panel');
@@ -518,7 +495,7 @@ export default function ResultView({ assessmentId, language, userId = null }) {
     }
   };
 
-  /* ---------- Build supportive pathway items for GapChips ---------- */
+  /* ---------- Pathway items for GapChips ---------- */
   const pathwayItems = [
     {
       id: 'voice',
@@ -552,24 +529,107 @@ export default function ResultView({ assessmentId, language, userId = null }) {
     note: availLine || undefined,
   }));
 
+  /* ---------- Role Card (minimal, to keep suggested roles working) ---------- */
+  function RoleCard({ item, variant }) {
+    const availText = availabilityWhy(availability, language);
+    const boosted = ((item._availabilityBoost || 0) + (item._proximityBoost || 0)) > 0.2;
+
+    const clarifier =
+      boosted && variant === 'bridge'
+        ? language === 'ar'
+          ? 'دور الجسر يناسب توافرك ومسافة تنقلك.'
+          : 'Bridge role that fits your availability and travel.'
+        : '';
+
+    return (
+      <article style={styles.card}>
+        <header
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+          }}
+        >
+          <h4 style={{ margin: 0, fontWeight: 600 }}>{item.title}</h4>
+
+          <span
+            style={{
+              fontSize: 12,
+              padding: '2px 8px',
+              borderRadius: 999,
+              ...(variant === 'ready'
+                ? {
+                    background: '#DCFCE7',
+                    color: '#166534',
+                    border: '1px solid #86efac',
+                  }
+                : {
+                    background: '#FEF3C7',
+                    color: '#92400E',
+                    border: '1px solid #fcd34d',
+                  }),
+            }}
+          >
+            {variant === 'ready' ? 'Ready now' : 'Bridge role'}
+          </span>
+        </header>
+
+        {item.why && (
+          <p style={{ color: '#444', margin: '8px 0 4px' }}>{item.why}</p>
+        )}
+
+        {(clarifier || availText) && (
+          <p style={{ color: '#475569', margin: '4px 0 8px', fontSize: 13 }}>
+            {clarifier ? `${clarifier} ` : ''}{availText}
+          </p>
+        )}
+
+        <LiveJobsLinks
+          goal={item.title}
+          level={experienceStage}
+          city={city}
+          keywords={cvSummary?.topKeywords || []}
+          language={language}
+          availability={availability}
+        />
+
+        {Array.isArray(item.gaps) && item.gaps.length > 0 && (
+          <ul style={{ color: '#555', margin: '6px 0 0 16px' }}>
+            {item.gaps.map((g, i) => {
+              const t = String(g?.type || '').toLowerCase();
+              const k = Array.isArray(g?.key) ? g.key.join(', ') : String(g?.key || '');
+              return <li key={i}>{t ? `${t}: ${k}` : k}</li>;
+            })}
+          </ul>
+        )}
+      </article>
+    );
+  }
+
   /* ---------- Render ---------- */
   return (
     <main dir={language === 'ar' ? 'rtl' : 'ltr'} style={styles.container}>
-      {/* Affirming results polish */}
-      <SummaryBand level={stageToLevel(experienceStage)} score={p} nextId="actions" />
-      <GapChips id="actions" title="Suggested next steps" items={pathwayItems} />
+      {/* Language toggle (EA can flip to English while supporting PTP) */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+        <LanguageSwitcher language={(language || 'en').toLowerCase()} />
+      </div>
+
+      {/* Affirming, localized Results polish */}
+      <SummaryBand level={stageToLevel(experienceStage)} score={p} nextId="actions" language={language} />
+      <GapChips id="actions" items={pathwayItems} language={language} />
       <RoleRecommendations
-        score={p}
         goalTitle={goalPlan?.goal || 'your main career goal'}
         currentRoles={currentRoles}
         pathway={pathwayItems}
+        language={language}
       />
 
       {/* Existing heading and message (kept) */}
       <h2 style={{ marginTop: 16 }}>{summary?.headline || 'Your starting point'}</h2>
       <p style={{ color: '#444', marginTop: 4 }}>{summary?.message}</p>
 
-      {/* CTA button */}
+      {/* CTA → next steps panel */}
       <button
         onClick={scrollToNextSteps}
         style={{
@@ -584,7 +644,7 @@ export default function ResultView({ assessmentId, language, userId = null }) {
           cursor: 'pointer',
         }}
       >
-        {ui.ctaContinue[language]}
+        Continue to your next step
       </button>
 
       <SupportBand
@@ -614,7 +674,7 @@ export default function ResultView({ assessmentId, language, userId = null }) {
         }}
       />
 
-      {/* GOAL PANEL */}
+      {/* GOAL PANEL (kept) */}
       {goalPlan && goalPlan.ok ? (
         <section
           dir={language === 'ar' ? 'rtl' : 'ltr'}
@@ -632,7 +692,7 @@ export default function ResultView({ assessmentId, language, userId = null }) {
           </h3>
 
           <div style={{ marginTop: 8 }}>
-            <strong>{ui.alreadyHave[language]}:</strong>
+            <strong>Already have:</strong>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
               {(goalPlan.alreadyHave || []).length > 0
                 ? goalPlan.alreadyHave.map((k) => (
@@ -652,7 +712,7 @@ export default function ResultView({ assessmentId, language, userId = null }) {
           </div>
 
           <div style={{ marginTop: 12 }}>
-            <strong>{ui.gentlyMissing[language]}:</strong>
+            <strong>Gently missing:</strong>
 
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
               {(goalPlan.gentlyMissing || []).length > 0
@@ -674,7 +734,7 @@ export default function ResultView({ assessmentId, language, userId = null }) {
             {goalPlan.gentlyMissing?.length > 0 && (
               <div style={{ marginTop: 10 }}>
                 <div style={{ marginBottom: 6 }}>
-                  <strong>{ui.suggestions[language]}:</strong>
+                  <strong>Suggested next actions:</strong>
                 </div>
 
                 <div style={styles.chipsRow}>
@@ -738,7 +798,7 @@ export default function ResultView({ assessmentId, language, userId = null }) {
       {/* PROGRESS (kept for visual meter) */}
       <section style={{ margin: '20px 0' }}>
         <label style={{ display: 'block', marginBottom: 8 }}>
-          <strong>{ui.progress[language]}</strong>
+          <strong>Progress</strong>
         </label>
         <div style={styles.progressOuter}>
           <div style={styles.progressInner} />
@@ -751,9 +811,7 @@ export default function ResultView({ assessmentId, language, userId = null }) {
         )}
       </section>
 
-      {/* --------------------------------------------------------
-            NEXT STEPS PANEL (existing, kept)
-         -------------------------------------------------------- */}
+      {/* NEXT STEPS PANEL (existing, kept) */}
       <section
         id="next-steps-panel"
         dir={language === 'ar' ? 'rtl' : 'ltr'}
@@ -766,13 +824,13 @@ export default function ResultView({ assessmentId, language, userId = null }) {
         }}
       >
         <h3 style={{ marginTop: 0, marginBottom: 12 }}>
-          {ui.nextStepsPanelTitle[language]}
+          Your next steps
         </h3>
 
         {/* INTERNAL ACTIONS */}
         <div>
           <h4 style={{ margin: '6px 0' }}>
-            {ui.internalActions[language]}
+            Internal development actions
           </h4>
 
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
@@ -788,7 +846,7 @@ export default function ResultView({ assessmentId, language, userId = null }) {
         {/* EXTERNAL COURSES */}
         <div style={{ marginTop: 24 }}>
           <h4 style={{ margin: '6px 0' }}>
-            {ui.externalCourses[language]}
+            External courses
           </h4>
 
           <ul style={{ marginLeft: 16, marginTop: 6, color: '#374151' }}>
@@ -828,10 +886,10 @@ export default function ResultView({ assessmentId, language, userId = null }) {
         {/* EXTERNAL JOB ROLES */}
         <div style={{ marginTop: 24 }}>
           <h4 style={{ margin: '6px 0' }}>
-            {ui.externalRoles[language]}
+            External job roles matched to your CV
           </h4>
 
-        <ul style={{ marginLeft: 16, marginTop: 6, color: '#374151' }}>
+          <ul style={{ marginLeft: 16, marginTop: 6, color: '#374151' }}>
             <li>
               <a
                 href={`https://www.indeed.co.uk/jobs?q=${encodeURIComponent(goalPlan?.goal || '')}`}
@@ -858,7 +916,7 @@ export default function ResultView({ assessmentId, language, userId = null }) {
         {/* INTERNAL READY ROLES */}
         <div style={{ marginTop: 24 }}>
           <h4 style={{ margin: '6px 0' }}>
-            {ui.suitableRoles[language]}
+            Best-fit roles for your CV (internal)
           </h4>
 
           {rolesReady.length === 0 ? (
@@ -875,7 +933,7 @@ export default function ResultView({ assessmentId, language, userId = null }) {
         {/* INTERNAL BRIDGE ROLES */}
         <div style={{ marginTop: 20 }}>
           <h4 style={{ margin: '6px 0' }}>
-            {ui.bridgeRolesLabel[language]}
+            Roles you're close to (internal)
           </h4>
 
           {rolesBridge.length === 0 ? (
@@ -892,12 +950,12 @@ export default function ResultView({ assessmentId, language, userId = null }) {
 
       {/* SUGGESTED ROLES SECTION (existing, kept) */}
       <section style={{ marginTop: 24 }}>
-        <h3 style={{ marginBottom: 8 }}>{ui.suggestedRoles[language]}</h3>
+        <h3 style={{ marginBottom: 8 }}>Suggested roles</h3>
 
         {rolesReady.length > 0 && (
           <>
             <h4 style={{ color: '#16a34a', margin: '8px 0' }}>
-              {ui.readyHeading[language]}
+              Ready now
             </h4>
             {rolesReady.map((r) => (
               <RoleCard key={`ready-${r.title}`} item={r} variant="ready" />
@@ -908,7 +966,7 @@ export default function ResultView({ assessmentId, language, userId = null }) {
         {rolesBridge.length > 0 && (
           <>
             <h4 style={{ color: '#a16207', margin: '14px 0 8px' }}>
-              {ui.bridgeHeading[language]}
+              Bridge roles (1–2 gaps)
             </h4>
             {rolesBridge.map((r) => (
               <RoleCard key={`bridge-${r.title}`} item={r} variant="bridge" />
@@ -934,11 +992,4 @@ export default function ResultView({ assessmentId, language, userId = null }) {
       )}
     </main>
   );
-}
-
-/* ---------- Role Card (kept) ---------- */
-function RoleCard({ item, variant, language, availability, experienceStage, city, cvSummary }) {
-  // NOTE: This component remains in the file above in your original version.
-  // If you moved it out earlier, keep your version. If you need it here,
-  // copy the earlier RoleCard from your codebase.
 }
