@@ -1,9 +1,9 @@
 'use client';
 import React from 'react';
 
-// Using alias imports (requires jsconfig.json at repo root)
-import SummaryBand from '@/components/results/SummaryBand';
-import GapChips from '@/components/results/GapChips';
+// Correct relative paths from app/results-demo → app/components/results
+import SummaryBand from '../components/results/SummaryBand';
+import GapChips from '../components/results/GapChips';
 
 export default function ResultsDemoPage() {
   const example = {
