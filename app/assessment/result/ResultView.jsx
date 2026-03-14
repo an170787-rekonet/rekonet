@@ -134,16 +134,16 @@ function monthsToStage(totalMonths) {
 const UK_POSTCODE_REGEX = /\b([A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}|GIR ?0AA)\b/i;
 
 const IN_PERSON_WORDS = [
-  'assistant','advisor','associate','reception','front of house','warehouse','retail','store',
-  'customer service','call centre','contact centre','team member','host','server','barista','care assistant'
+  'assistant', 'advisor', 'associate', 'reception', 'front of house', 'warehouse', 'retail', 'store',
+  'customer service', 'call centre', 'contact centre', 'team member', 'host', 'server', 'barista', 'care assistant'
 ];
 
-const REMOTE_WORDS = ['remote','work from home','hybrid'];
-const PT_WORDS = ['part-time','part time','pt'];
-const WEEKEND_WORDS = ['weekend','saturday','sunday','weekends'];
-const EVENING_WORDS = ['evening','late','night','twilight','pm shift','night shift'];
-const MORNING_WORDS = ['morning','am shift','early'];
-const AFTERNOON_WORDS = ['afternoon','pm','day shift'];
+const REMOTE_WORDS = ['remote', 'work from home', 'hybrid'];
+const PT_WORDS = ['part-time', 'part time', 'pt'];
+const WEEKEND_WORDS = ['weekend', 'saturday', 'sunday', 'weekends'];
+const EVENING_WORDS = ['evening', 'late', 'night', 'twilight', 'pm shift', 'night shift'];
+const MORNING_WORDS = ['morning', 'am shift', 'early'];
+const AFTERNOON_WORDS = ['afternoon', 'pm', 'day shift'];
 
 function stringHitsAny(s = '', words = []) {
   const t = String(s).toLowerCase();
@@ -308,7 +308,7 @@ function stageToLevel(stage) {
 
 function roleToJobsUrl(title) {
   const q = encodeURIComponent(title || '');
-  // Use & not HTML entities
+  // Use & (not HTML entities) in query params
   return `https://uk.indeed.com/jobs?q=${q}&fromage=7&sort=date`;
 }
 
@@ -843,7 +843,7 @@ export default function ResultView({ assessmentId, language, userId = null }) {
           </div>
         </div>
 
-        {/* EXTERNAL COURSES */}
+        {/* EXTERNAL COURSES (fixed anchors) */}
         <div style={{ marginTop: 24 }}>
           <h4 style={{ margin: '6px 0' }}>
             External courses
@@ -851,17 +851,32 @@ export default function ResultView({ assessmentId, language, userId = null }) {
 
           <ul style={{ marginLeft: 16, marginTop: 6, color: '#374151' }}>
             <li>
-              https://alison.com
+              <a
+                href="https://alison.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: '#4f46e5' }}
+              >
                 Alison – Free sector-aligned courses
               </a>
             </li>
             <li>
-              https://www.futurelearn.com
+              <a
+                href="https://www.futurelearn.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: '#4f46e5' }}
+              >
                 FutureLearn – Career-building mini courses
               </a>
             </li>
             <li>
-              https://www.udemy.com
+              <a
+                href="https://www.udemy.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: '#4f46e5' }}
+              >
                 Udemy – Skill-based short courses
               </a>
             </li>
@@ -978,3 +993,4 @@ export default function ResultView({ assessmentId, language, userId = null }) {
     </main>
   );
 }
+``
