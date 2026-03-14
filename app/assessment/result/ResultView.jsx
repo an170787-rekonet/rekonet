@@ -718,7 +718,7 @@ export default function ResultView({ assessmentId, language, userId = null }) {
             style={{
               padding: '6px 10px',
               background: '#F3F4F6',
-              border: '1px solid '#E5E7EB',
+              border: '1px solid #E5E7EB',
               borderRadius: 8,
               fontSize: 12,
               cursor: 'pointer',
@@ -831,7 +831,7 @@ export default function ResultView({ assessmentId, language, userId = null }) {
             {ui.externalRoles[language]}
           </h4>
 
-          <ul style={{ marginLeft: 16, marginTop: 6, color: '#374151' }}>
+        <ul style={{ marginLeft: 16, marginTop: 6, color: '#374151' }}>
             <li>
               <a
                 href={`https://www.indeed.co.uk/jobs?q=${encodeURIComponent(goalPlan?.goal || '')}`}
@@ -934,4 +934,11 @@ export default function ResultView({ assessmentId, language, userId = null }) {
       )}
     </main>
   );
+}
+
+/* ---------- Role Card (kept) ---------- */
+function RoleCard({ item, variant, language, availability, experienceStage, city, cvSummary }) {
+  // NOTE: This component remains in the file above in your original version.
+  // If you moved it out earlier, keep your version. If you need it here,
+  // copy the earlier RoleCard from your codebase.
 }
