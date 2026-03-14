@@ -2,23 +2,23 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-// Create a Supabase client with Service Role (server-only)
+// Create a Supabase client with Service Role (server-only).
 // NOTE: Never expose SERVICE_ROLE in client-side code.
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-// Force Node runtime so FormData/File uploads work reliably
+// Force Node runtime so FormData/File uploads work reliably.
 export const runtime = 'nodejs';
 
 export async function POST(req) {
   try {
-    // 1) Read multipart/form-data coming from the client
+    // 1) Read multipart/form-data from client
     const form = await req.formData();
-    const file = form.get('file'); // Blob/File from <input type="file"> or MediaRecorder
+    const file = form.get('file');           // Blob/File from <input> or MediaRecorder
     const userId = form.get('user_id') || 'anon';
-    const roleId = form.get('role_id') || null;
+    const roleId = form.get('role_id') || 'interview';
     const durationMs = Number(form.get('duration_ms') || 0);
 
     if (!file || typeof file === 'string') {
@@ -28,7 +28,9 @@ export async function POST(req) {
     // 2) Choose extension from MIME
     const ext =
       (file.type && file.type.includes('webm')) ? 'webm' :
-      (file.type && file.type.includes('mp4'))  ? 'mp4'  : 'webm';
+      (file.type && file.type.includes('mp4'))  ? 'mp4'  :
+      (file.type && file.type.includes('m4a'))  ? 'm4a'  :
+      (file.type && file.type.includes('mp3'))  ? 'mp3'  : 'webm';
 
     // 3) Unique object path inside the bucket
     const now = new Date().toISOString().replace(/[:.]/g, '-');
@@ -48,7 +50,7 @@ export async function POST(req) {
       return NextResponse.json({ ok: false, error: uploadError.message }, { status: 500 });
     }
 
-    // 5) Get a signed URL (works with private buckets)
+    // 5) Create a signed URL (works with private buckets)
     const { data: signed, error: signedErr } = await supabase
       .storage
       .from('audio')
@@ -58,14 +60,37 @@ export async function POST(req) {
       return NextResponse.json({ ok: false, error: signedErr.message }, { status: 500 });
     }
 
-    // 6) OPTIONAL: Persist metadata once the table exists (uncomment when ready)
-    await supabase.from('audio_evidence').insert({
-  user_id: userId,
-  role_id: roleId,
-  path: objectPath,
-  mime: file.type || `audio/${ext}`,
-  duration_ms: durationMs
-});
+    // 6) Insert a log row into audio_evidence (user_id must be UUID or null)
+    const isUuid =
+      typeof userId === 'string' &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(userId);
+
+    const userIdValue = isUuid ? userId : null;
+
+    const { error: insertErr } = await supabase
+      .from('audio_evidence')
+      .insert({
+        user_id: userIdValue,
+        role_id: roleId,
+        path: objectPath,
+        mime: file.type || `audio/${ext}`,
+        duration_ms: durationMs
+      });
+
+    // If logging fails, we still return success for the upload,
+    // but include a hint so we can diagnose later without blocking UX.
+    if (insertErr) {
+      return NextResponse.json({
+        ok: true,
+        path: objectPath,
+        signedUrl: signed.signedUrl,
+        mime: file.type || `audio/${ext}`,
+        durationMs,
+        warning: `Upload ok, but audio_evidence insert failed: ${insertErr.message}`
+      });
+    }
+
+    // 7) Success
     return NextResponse.json({
       ok: true,
       path: objectPath,
