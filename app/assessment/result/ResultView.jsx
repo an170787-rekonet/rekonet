@@ -851,32 +851,17 @@ export default function ResultView({ assessmentId, language, userId = null }) {
 
           <ul style={{ marginLeft: 16, marginTop: 6, color: '#374151' }}>
             <li>
-              <a
-                href="https://alison.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ color: '#4f46e5' }}
-              >
+              https://alison.com
                 Alison – Free sector-aligned courses
               </a>
             </li>
             <li>
-              <a
-                href="https://www.futurelearn.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ color: '#4f46e5' }}
-              >
+              https://www.futurelearn.com
                 FutureLearn – Career-building mini courses
               </a>
             </li>
             <li>
-              <a
-                href="https://www.udemy.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ color: '#4f46e5' }}
-              >
+              https://www.udemy.com
                 Udemy – Skill-based short courses
               </a>
             </li>
