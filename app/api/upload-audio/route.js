@@ -59,14 +59,13 @@ export async function POST(req) {
     }
 
     // 6) OPTIONAL: Persist metadata once the table exists (uncomment when ready)
-    // await supabase.from('audio_evidence').insert({
-    //   user_id: userId,
-    //   role_id: roleId,
-    //   path: objectPath,
-    //   mime: file.type || `audio/${ext}`,
-    //   duration_ms: durationMs
-    // });
-
+    await supabase.from('audio_evidence').insert({
+  user_id: userId,
+  role_id: roleId,
+  path: objectPath,
+  mime: file.type || `audio/${ext}`,
+  duration_ms: durationMs
+});
     return NextResponse.json({
       ok: true,
       path: objectPath,
