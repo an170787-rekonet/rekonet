@@ -30,12 +30,15 @@ export default function LanguageSwitcher({ language = 'en' }) {
   const currentCode = (language || 'en').toLowerCase();
   const items = useMemo(() => LANGS, []);
 
-  const onChange = useCallback((e) => {
-    const next = e?.target?.value || 'en';
-    const q = new URLSearchParams(sp?.toString() || '');
-    q.set('language', next);
-    router.push(`${pathname}?${q.toString()}`);
-  }, [router, pathname, sp]);
+  const onChange = useCallback(
+    (e) => {
+      const next = e?.target?.value || 'en';
+      const q = new URLSearchParams(sp?.toString() || '');
+      q.set('language', next);
+      router.push(`${pathname}?${q.toString()}`);
+    },
+    [router, pathname, sp]
+  );
 
   return (
     <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
