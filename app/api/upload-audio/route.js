@@ -16,7 +16,7 @@ export async function POST(req) {
   try {
     // 1) Read multipart/form-data from client
     const form = await req.formData();
-    const file = form.get('file');           // Blob/File from <input> or MediaRecorder
+    const file = form.get('file'); // Blob/File from <input type="file"> or MediaRecorder
     const userId = form.get('user_id') || 'anon';
     const roleId = form.get('role_id') || 'interview';
     const durationMs = Number(form.get('duration_ms') || 0);
@@ -26,11 +26,12 @@ export async function POST(req) {
     }
 
     // 2) Choose extension from MIME
+    const mime = (file.type || '').toLowerCase();
     const ext =
-      (file.type && file.type.includes('webm')) ? 'webm' :
-      (file.type && file.type.includes('mp4'))  ? 'mp4'  :
-      (file.type && file.type.includes('m4a'))  ? 'm4a'  :
-      (file.type && file.type.includes('mp3'))  ? 'mp3'  : 'webm';
+      mime.includes('webm') ? 'webm' :
+      mime.includes('mp4')  ? 'mp4'  :
+      mime.includes('m4a')  ? 'm4a'  :
+      mime.includes('mp3')  ? 'mp3'  : 'webm';
 
     // 3) Unique object path inside the bucket
     const now = new Date().toISOString().replace(/[:.]/g, '-');
@@ -43,7 +44,7 @@ export async function POST(req) {
       .upload(objectPath, file, {
         cacheControl: '3600',
         upsert: false,
-        contentType: file.type || `audio/${ext}`,
+        contentType: mime || `audio/${ext}`,
       });
 
     if (uploadError) {
@@ -73,18 +74,18 @@ export async function POST(req) {
         user_id: userIdValue,
         role_id: roleId,
         path: objectPath,
-        mime: file.type || `audio/${ext}`,
+        mime: mime || `audio/${ext}`,
         duration_ms: durationMs
       });
 
-    // If logging fails, we still return success for the upload,
-    // but include a hint so we can diagnose later without blocking UX.
+    // If logging fails, still return success for the upload,
+    // but include a warning so we can diagnose later without blocking UX.
     if (insertErr) {
       return NextResponse.json({
         ok: true,
         path: objectPath,
         signedUrl: signed.signedUrl,
-        mime: file.type || `audio/${ext}`,
+        mime: mime || `audio/${ext}`,
         durationMs,
         warning: `Upload ok, but audio_evidence insert failed: ${insertErr.message}`
       });
@@ -95,7 +96,7 @@ export async function POST(req) {
       ok: true,
       path: objectPath,
       signedUrl: signed.signedUrl,
-      mime: file.type || `audio/${ext}`,
+      mime: mime || `audio/${ext}`,
       durationMs
     });
   } catch (err) {
