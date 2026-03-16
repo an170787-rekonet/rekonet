@@ -530,7 +530,7 @@ function ResultsGuidedInner() {
           title="ATS CV tune (10 min)"
           subtitle="Polish a few keywords to align with job descriptions."
           primaryLabel="Open CV tools"
-          onPrimary={() => go("/cv")}
+          onPrimary={() => go("/assessment/cv-upload")}
           secondaryLabel="Skip for now"
           onSecondary={next}
         >
