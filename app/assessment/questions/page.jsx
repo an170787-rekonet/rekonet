@@ -14,7 +14,11 @@ function QuestionsInner() {
   const sp = useSearchParams();
   const router = useRouter();
 
-  const assessment_id = sp.get('assessment_id') || 'demo';
+  // Accept both ?assessment_id=… or ?id=… ; DO NOT fall back to "demo"
+  const urlId =
+    sp.get('assessment_id') ||
+    sp.get('id') ||
+    '';
 
   // Initial language guess: URL -> cookie -> 'en'
   const cookieLang = typeof document !== 'undefined' ? getCookie('language') : null;
@@ -29,30 +33,38 @@ function QuestionsInner() {
   const [i, setI] = useState(0);          // current index
   const [saving, setSaving] = useState(false);
 
+  // If we have no assessment id, go back to the real start
+  useEffect(() => {
+    if (!urlId) {
+      const qs = new URLSearchParams();
+      qs.set('language', clientLang);
+      router.replace(`/assessment/language?${qs.toString()}`);
+    }
+  }, [urlId, clientLang, router]);
+
   // Load questions (use clientLang for the request; respect server response)
   useEffect(() => {
+    if (!urlId) return; // we already redirected above
     let on = true;
     (async () => {
       setLoading(true);
       setErr('');
       try {
-        // IMPORTANT: real '&' (not &amp;)
+        // IMPORTANT: use real '&' (not &amp;)
         const url = `/api/assessment/questions?assessment_id=${encodeURIComponent(
-          assessment_id
+          urlId
         )}&language=${encodeURIComponent(clientLang)}`;
         const res = await fetch(url, { cache: 'no-store' });
         const json = await res.json();
         if (!on) return;
 
         if (json?.ok) {
-          // 👇 server is authoritative for language after fetch
           const langFromServer = (json.language || clientLang || 'en').toLowerCase();
           setServerLang(langFromServer);
 
           setIntro(json.intro || '');
           setScale(Array.isArray(json.scale) ? json.scale : scale);
 
-          // Accept either { items } flat or { categories } flat
           const arr = Array.isArray(json.items)
             ? json.items
             : Array.isArray(json.categories)
@@ -61,9 +73,6 @@ function QuestionsInner() {
 
           setItems(arr);
           setI(0);
-
-          // (Optional) quick visibility while testing:
-          // console.log('clientLang:', clientLang, 'serverLang:', langFromServer, 'scale[0]:', json.scale?.[0]);
         } else {
           setErr(json?.error || 'Could not load questions.');
         }
@@ -75,21 +84,21 @@ function QuestionsInner() {
     })();
     return () => { on = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [assessment_id, clientLang]);
+  }, [urlId, clientLang]);
 
   const current = useMemo(() => items[i] || null, [items, i]);
   const done = i >= items.length;
 
   // Handle answer selection (1..5)
   const answer = async (score) => {
-    if (!current) return;
+    if (!current || !urlId) return;
     setSaving(true);
     try {
       await fetch('/api/assessment/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          assessment_id,
+          assessment_id: urlId,
           question_id: current.id,
           category: current.category,
           score, // 1..5
@@ -102,21 +111,21 @@ function QuestionsInner() {
       if (i + 1 < items.length) {
         setI(i + 1);
       } else {
-        router.push(
-          `/assessment/result?assessment_id=${encodeURIComponent(
-            assessment_id
-          )}&language=${encodeURIComponent(serverLang)}`
-        );
+        // IMPORTANT: real '&' (not &amp;) and use ?id= for broad compatibility
+        const qs = new URLSearchParams();
+        qs.set('id', urlId);                // Results page already accepts id/uuid/assessment_id
+        qs.set('language', serverLang);
+        router.push(`/assessment/result?${qs.toString()}`);
       }
     }
   };
 
+  if (!urlId) return <main style={{ padding: 24 }}>Redirecting…</main>;
   if (loading) return <main style={{ padding: 24 }}>Loading…</main>;
   if (err) return <main style={{ padding: 24, color: 'crimson' }}>{err}</main>;
   if (!items.length) return <main style={{ padding: 24 }}>No questions yet.</main>;
 
   if (done) {
-    // In case we render once more while redirecting
     return (
       <main style={{ padding: 24 }}>
         <p>Thanks — finishing up…</p>
@@ -141,7 +150,6 @@ function QuestionsInner() {
         )}
       </section>
 
-      {/* ✅ FIXED style object syntax here */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         {scale.map((label, idx) => {
           const score = idx + 1; // 1..5
