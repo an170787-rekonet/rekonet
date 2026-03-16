@@ -1,42 +1,32 @@
 // app/api/availability/[assessmentId]/route.js
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabaseClient";
+import { createClient } from "@supabase/supabase-js";
 
-export async function PUT(req, { params }) {
-  const assessmentId = params.assessmentId;
+export const dynamic = "force-dynamic";
 
+function getServerSupabase() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY; // server only
+  if (!url || !key) throw new Error("Missing Supabase env vars");
+  return createClient(url, key);
+}
+
+export async function GET(_req, { params }) {
   try {
-    const supabase = createClient();
-    const body = await req.json();
+    const supabase = getServerSupabase();
+    const assessmentId = params.assessmentId;
 
+    // TODO: adjust to your schema/table name
     const { data, error } = await supabase
       .from("availability")
-      .upsert({
-        assessment_id: assessmentId,
-        days: body.days,
-        times: body.times,
-        contract: body.contract,
-        max_travel_mins: body.max_travel_mins,
-        earliest_start: body.earliest_start
-      })
-      .select()
-      .single();
+      .select("*")
+      .eq("assessment_id", assessmentId)
+      .maybeSingle();
 
-    if (error) {
-      return NextResponse.json(
-        { ok: false, data: null, error: error.message },
-        { status: 400 }
-      );
-    }
+    if (error) throw error;
 
-    return NextResponse.json(
-      { ok: true, data, error: null },
-      { status: 200 }
-    );
+    return NextResponse.json({ ok: true, availability: data || null }, { status: 200 });
   } catch (err) {
-    return NextResponse.json(
-      { ok: false, data: null, error: "Unexpected server error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ ok: false, error: String(err) }, { status: 500 });
   }
 }
