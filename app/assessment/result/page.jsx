@@ -618,9 +618,9 @@ function ResultsGuidedInner() {
             <p style={{ color: "#374151" }}>
               Drop in your CV (PDF/DOC/DOCX) for personalised insights.
             </p>
-            <a href={withQS("/cv")} style={{ textDecoration: "underline" }}>
-              Open CV tools
-            </a>
+<a href={withQS("/assessment/cv-upload")} style={{ textDecoration: "underline" }}>
+  Open CV tools
+</a>
           </DetailsDisclosure>
 
           <DetailsDisclosure title="Availability (working pattern)">
