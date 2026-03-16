@@ -1,8 +1,14 @@
 // app/assessment/result/page.jsx
 "use client";
 
-import React, { Suspense, useCallback, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import React, {
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 // Reuse your results components (added in Recovery v11)
 import SummaryBand from "../../components/results/SummaryBand";
@@ -12,9 +18,141 @@ import RoleRecommendations from "../../components/results/RoleRecommendations";
 // Keep dynamic so we don't prerender with unknown params
 export const dynamic = "force-dynamic";
 
-/* -------------------------------------------------------------------------- */
-/* Small local helpers (inlined so this file works standalone)                */
-/* -------------------------------------------------------------------------- */
+/* ============================================================================
+   0) Result fetch + normalization (wire this to your real API)
+   ========================================================================== */
+
+//  🔧 Set this to your actual results endpoint.
+//  Keep only the one that exists in your app, e.g., ["/api/assessment/result"].
+const ENDPOINTS = [
+  "/api/assessment/result",
+  "/api/results/by-assessment",
+  "/api/results",
+];
+
+function normalizeResult(raw) {
+  const get = (obj, ...keys) =>
+    keys.reduce((v, k) => (v == null ? v : v[k]), obj);
+
+  const level =
+    raw?.level ??
+    get(raw, "result", "level") ??
+    get(raw, "summary", "level") ??
+    null;
+
+  const score =
+    raw?.score ??
+    get(raw, "result", "score") ??
+    get(raw, "progress", "score") ??
+    null;
+
+  const goalTitle =
+    raw?.goalTitle ??
+    get(raw, "goal", "title") ??
+    raw?.targetRole ??
+    null;
+
+  const roleSuggestions =
+    raw?.roleSuggestions ??
+    get(raw, "roles", "current") ??
+    get(raw, "roles", "suggested") ??
+    [];
+
+  const normalizedRoles = (roleSuggestions || []).map((r, idx) => {
+    if (typeof r === "string") return { id: `r${idx}`, title: r };
+    return {
+      id: r.id ?? `r${idx}`,
+      title: r.title ?? r.name ?? "Role",
+      link: r.link ?? r.url ?? undefined,
+    };
+  });
+
+  const pathwayRaw = raw?.pathway ?? raw?.nextSteps ?? raw?.actions ?? [];
+  const pathway =
+    (pathwayRaw || []).map((p, idx) => {
+      if (typeof p === "string") return { id: `p${idx}`, label: p };
+      return {
+        id: p.id ?? `p${idx}`,
+        label: p.label ?? p.title ?? "Next step",
+        hint: p.hint,
+        href: p.href ?? p.link,
+        actionText: p.actionText ?? p.cta ?? undefined,
+      };
+    }) || [];
+
+  return {
+    level,
+    score,
+    goalTitle,
+    roleSuggestions: normalizedRoles,
+    pathway,
+  };
+}
+
+function useResult(assessmentId, language) {
+  const [state, setState] = useState({
+    loading: true,
+    error: null,
+    result: null,
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function run() {
+      if (!assessmentId) {
+        setState({ loading: false, error: null, result: null });
+        return;
+      }
+      setState((s) => ({ ...s, loading: true, error: null }));
+
+      for (const base of ENDPOINTS) {
+        try {
+          const url = new URL(base, window.location.origin);
+          url.searchParams.set("assessmentId", assessmentId);
+          url.searchParams.set("language", language || "en");
+
+          const res = await fetch(url.toString(), {
+            method: "GET",
+            headers: { "Cache-Control": "no-store" },
+          });
+          if (!res.ok) continue;
+
+          const data = await res.json();
+          const raw = data?.result ?? data;
+          const normalized = normalizeResult(raw);
+
+          if (!cancelled) {
+            setState({ loading: false, error: null, result: normalized });
+          }
+          return;
+        } catch {
+          continue;
+        }
+      }
+
+      if (!cancelled) {
+        setState({
+          loading: false,
+          error:
+            "Could not load results. Please confirm the results API route.",
+          result: null,
+        });
+      }
+    }
+
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [assessmentId, language]);
+
+  return state; // { loading, error, result }
+}
+
+/* ============================================================================
+   1) Local UI helpers (inline for single-file drop-in)
+   ========================================================================== */
 
 function ProgressBar({ value, max }) {
   const pct = Math.max(0, Math.min(100, Math.round((value / max) * 100)));
@@ -145,30 +283,37 @@ function useJourneyProgress(keyBase, initial = 0) {
   const [step, setStep] = useState(initial);
 
   useEffect(() => {
-    // Restore from localStorage
     try {
       const saved = Number(window.localStorage.getItem(key));
       if (!Number.isNaN(saved) && saved >= 0) setStep(saved);
-    } catch (_) {}
+    } catch {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [keyBase]);
 
   useEffect(() => {
-    // Persist to localStorage
     try {
       window.localStorage.setItem(key, String(step));
-    } catch (_) {}
+    } catch {}
   }, [key, step]);
 
   return [step, setStep];
 }
 
-/* -------------------------------------------------------------------------- */
-/* The guided Results flow                                                    */
-/* -------------------------------------------------------------------------- */
+/* ============================================================================
+   2) The guided Results flow (now backed by real data via useResult)
+   ========================================================================== */
 
 function ResultsGuidedInner() {
   const sp = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  // Preserve the current query string (e.g., ?language=it)
+  const qs = sp.toString();
+  const withQS = useCallback(
+    (href) => (qs ? `${href}?${qs}` : href),
+    [qs]
+  );
 
   // Read assessment id from the URL (support multiple keys)
   const assessmentId = useMemo(() => {
@@ -193,44 +338,26 @@ function ResultsGuidedInner() {
     0
   );
 
+  // Load REAL result for this assessment
+  const { loading, error, result } = useResult(assessmentId, language);
+
   const totalSteps = 6;
-
-  const next = useCallback(() => setStep((s) => Math.min(totalSteps - 1, s + 1)), [setStep]);
+  const next = useCallback(
+    () => setStep((s) => Math.min(totalSteps - 1, s + 1)),
+    [setStep]
+  );
   const back = useCallback(() => setStep((s) => Math.max(0, s - 1)), [setStep]);
-
-  // --- TODO: Replace this with your REAL data mapping ---
-  // If you paste your result object shape (or the fetch from ResultView),
-  // I’ll patch this to live values (level/score/roles/pathway) in minutes.
-  const result = {
-    level: "Level 1",
-    score: 25, // optional, used only for supportive copy
-    goalTitle: "Customer Service Assistant",
-    roleSuggestions: [
-      { id: "rsa", title: "Retail Assistant" },
-      { id: "reception", title: "Reception Assistant" },
-    ],
-    pathway: [
-      {
-        id: "p1",
-        label: "Add a short ‘Why I like working with people’ example",
-        href: "/recorder",
-        actionText: "Record (30–60s)",
-      },
-      {
-        id: "p2",
-        label: "Show a coordination win",
-        href: "/recorder",
-        actionText: "Add evidence",
-      },
-      { id: "p3", label: "ATS CV tune (10 min)", href: "/cv", actionText: "Open" },
-    ],
-  };
 
   function roleToJobsUrl(title) {
     const q = encodeURIComponent(title);
-    // You already stabilised Indeed UK links earlier; swap this for your helper when ready.
     return `https://uk.indeed.com/jobs?q=${q}&fromage=7&sort=date`;
   }
+
+  // Safer internal navigation that preserves query params:
+  const go = useCallback(
+    (href) => router.push(withQS(href)),
+    [router, withQS]
+  );
 
   const header = (
     <div className="max-w-3xl mx-auto p-4">
@@ -246,6 +373,62 @@ function ResultsGuidedInner() {
       )}
     </div>
   );
+
+  // Loading + Error states (kept friendly and low-pressure)
+  if (loading) {
+    return (
+      <main style={{ background: "#f9fafb", minHeight: "100vh", paddingBottom: 64 }}>
+        {header}
+        <section className="max-w-3xl mx-auto p-4">
+          <div
+            style={{
+              background: "#fff",
+              border: "1px solid #e5e7eb",
+              borderRadius: 12,
+              padding: 16,
+            }}
+          >
+            <p style={{ color: "#374151", margin: 0 }}>
+              Preparing your supportive results… one moment.
+            </p>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  if (error) {
+    return (
+      <main style={{ background: "#f9fafb", minHeight: "100vh", paddingBottom: 64 }}>
+        {header}
+        <section className="max-w-3xl mx-auto p-4">
+          <div
+            style={{
+              background: "#fff",
+              border: "1px solid #fecaca",
+              borderRadius: 12,
+              padding: 16,
+            }}
+          >
+            <p style={{ color: "#991b1b", marginTop: 0, marginBottom: 8 }}>
+              We couldn’t load your results just yet.
+            </p>
+            <p style={{ color: "#374151", margin: 0 }}>
+              Please check the results link or try again. If the issue continues, let us
+              know—we’ll sort it quickly.
+            </p>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  // If result exists, render the guided journey with REAL values
+  const level = result?.level ?? null;
+  const score = result?.score ?? null;
+  const goalTitle = result?.goalTitle ?? "your main career goal";
+  const roleSuggestions = result?.roleSuggestions ?? [];
+  const pathway = result?.pathway ?? [];
 
   return (
     <main style={{ background: "#f9fafb", minHeight: "100vh", paddingBottom: 64 }}>
@@ -269,7 +452,7 @@ function ResultsGuidedInner() {
               border: "1px solid #dbeafe",
             }}
           >
-            <SummaryBand level={result.level} score={result.score} nextId="actions" />
+            <SummaryBand level={level} score={score} nextId="actions" />
           </div>
         </StepShell>
       )}
@@ -282,7 +465,7 @@ function ResultsGuidedInner() {
           title="Add a short ‘Why I like working with people’ example"
           subtitle="30–60 seconds is perfect. You’re just showing your people focus."
           primaryLabel="Open recorder"
-          onPrimary={() => (window.location.href = "/recorder")}
+          onPrimary={() => go("/recorder")}
           secondaryLabel="I’ve added it"
           onSecondary={next}
           footer={
@@ -319,13 +502,13 @@ function ResultsGuidedInner() {
           title="Show a coordination win"
           subtitle="Pick one example where you kept things organised and on time."
           primaryLabel="Add evidence"
-          onPrimary={() => (window.location.href = "/recorder")}
+          onPrimary={() => go("/recorder")}
           secondaryLabel="I’ve added it"
           onSecondary={next}
           footer={
             <span>
               You can review your clips anytime on{" "}
-              <a href="/evidence" style={{ textDecoration: "underline" }}>
+              <a href={withQS("/evidence")} style={{ textDecoration: "underline" }}>
                 your evidence list
               </a>
               .
@@ -347,7 +530,7 @@ function ResultsGuidedInner() {
           title="ATS CV tune (10 min)"
           subtitle="Polish a few keywords to align with job descriptions."
           primaryLabel="Open CV tools"
-          onPrimary={() => (window.location.href = "/cv")}
+          onPrimary={() => go("/cv")}
           secondaryLabel="Skip for now"
           onSecondary={next}
         >
@@ -379,15 +562,15 @@ function ResultsGuidedInner() {
             }}
           >
             <RoleRecommendations
-              score={result.score}
-              goalTitle={result.goalTitle || "your main career goal"}
-              currentRoles={result.roleSuggestions}
-              pathway={result.pathway}
+              score={score}
+              goalTitle={goalTitle}
+              currentRoles={roleSuggestions}
+              pathway={pathway}
             />
           </div>
 
           <div style={{ display: "grid", gap: 8 }}>
-            {(result.roleSuggestions || []).map((r) => (
+            {(roleSuggestions || []).map((r) => (
               <div
                 key={r.id}
                 style={{
@@ -423,7 +606,7 @@ function ResultsGuidedInner() {
           title="Great work — your next short activity is ready"
           subtitle="You kept a steady pace. Small steps build momentum."
           primaryLabel="Finish for now"
-          onPrimary={() => (window.location.href = "/")}
+          onPrimary={() => go("/")}
           secondaryLabel="Back"
           onSecondary={back}
         >
@@ -435,7 +618,7 @@ function ResultsGuidedInner() {
             <p style={{ color: "#374151" }}>
               Drop in your CV (PDF/DOC/DOCX) for personalised insights.
             </p>
-            <a href="/cv" style={{ textDecoration: "underline" }}>
+            <a href={withQS("/cv")} style={{ textDecoration: "underline" }}>
               Open CV tools
             </a>
           </DetailsDisclosure>
@@ -444,7 +627,7 @@ function ResultsGuidedInner() {
             <p style={{ color: "#374151" }}>
               Set the days and times that suit you best. This helps shape matches.
             </p>
-            <a href="/availability" style={{ textDecoration: "underline" }}>
+            <a href={withQS("/availability")} style={{ textDecoration: "underline" }}>
               Open availability form
             </a>
           </DetailsDisclosure>
@@ -474,7 +657,9 @@ function ResultsGuidedInner() {
               background: "#fff",
             }}
           >
-            <p style={{ fontSize: 18, fontWeight: 600, margin: 0 }}>🎉 You’ve unlocked your next step</p>
+            <p style={{ fontSize: 18, fontWeight: 600, margin: 0 }}>
+              🎉 You’ve unlocked your next step
+            </p>
             <p style={{ color: "#374151", marginTop: 6 }}>
               When you return, we’ll pick up exactly where you paused.
             </p>
@@ -486,7 +671,6 @@ function ResultsGuidedInner() {
 }
 
 function ResultPageWithSuspense() {
-  // Suspense wrapper is required when using useSearchParams in a Client Component
   return (
     <Suspense fallback={<div />}>
       <ResultsGuidedInner />
@@ -495,4 +679,3 @@ function ResultPageWithSuspense() {
 }
 
 export default ResultPageWithSuspense;
-``
