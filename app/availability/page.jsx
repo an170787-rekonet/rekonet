@@ -1,12 +1,12 @@
 // app/availability/page.jsx
 "use client";
 
-import React from "react";
+import React, { Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
-export default function AvailabilityPage() {
+function AvailabilityInner() {
   const router = useRouter();
   const sp = useSearchParams();
   const qs = sp.toString();
@@ -34,7 +34,6 @@ export default function AvailabilityPage() {
             marginTop: 12,
           }}
         >
-          {/* Replace with your real fields later */}
           <label style={{ display: "block", fontWeight: 600, marginBottom: 8 }}>
             Working pattern
           </label>
@@ -58,21 +57,16 @@ export default function AvailabilityPage() {
             Save
           </button>
         </form>
-
-        <div style={{ marginTop: 16 }}>
-          <button
-            onClick={() => router.push(backHref)}
-            style={{
-              background: "#fff",
-              border: "1px solid #d1d5db",
-              borderRadius: 8,
-              padding: "10px 16px",
-            }}
-          >
-            Back to results
-          </button>
-        </div>
       </section>
     </main>
+  );
+}
+
+export default function AvailabilityPage() {
+  // ✅ Wrap the hook-using component with Suspense
+  return (
+    <Suspense fallback={<div />}>
+      <AvailabilityInner />
+    </Suspense>
   );
 }
