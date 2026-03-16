@@ -1,33 +1,37 @@
 // app/api/availability/save/route.js
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabaseClient";
+import { createClient } from "@supabase/supabase-js";
+
+export const dynamic = "force-dynamic";
+
+function getServerSupabase() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY; // server only
+  if (!url || !key) throw new Error("Missing Supabase env vars");
+  return createClient(url, key);
+}
 
 export async function POST(req) {
   try {
-    const supabase = createClient();
-    const body = await req.json();
+    const supabase = getServerSupabase();
+    const body = await req.json(); // { assessmentId, ...fields }
+    const { assessmentId, ...fields } = body;
 
+    // TODO: adjust to your schema/table name & conflict target
     const { data, error } = await supabase
       .from("availability")
-      .upsert(body)
+      .upsert(
+        { assessment_id: assessmentId, ...fields },
+        { onConflict: "assessment_id" }
+      )
       .select()
-      .single();
+      .maybeSingle();
 
-    if (error) {
-      return NextResponse.json(
-        { ok: false, data: null, error: error.message },
-        { status: 400 }
-      );
-    }
+    if (error) throw error;
 
-    return NextResponse.json(
-      { ok: true, data, error: null },
-      { status: 200 }
-    );
+    return NextResponse.json({ ok: true, availability: data }, { status: 200 });
   } catch (err) {
-    return NextResponse.json(
-      { ok: false, data: null, error: "Unexpected server error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ ok: false, error: String(err) }, { status: 500 });
   }
 }
+``
