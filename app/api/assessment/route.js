@@ -15,7 +15,12 @@ export async function POST(request) {
       .single();
 
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
-    return NextResponse.json({ ok: true, assessment: data });
+    return NextResponse.json({
+  ok: true,
+  assessment_id: data.id,   // <-- the Language page needs this field
+  language: data.language,
+  assessment: data
+});
   } catch (e) {
     return NextResponse.json({ ok: false, error: String(e?.message || e) }, { status: 500 });
   }
