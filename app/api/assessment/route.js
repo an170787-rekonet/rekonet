@@ -1,3 +1,4 @@
+import { emitEvent } from '../_lib/events/emitEvent';
 export const runtime = 'nodejs';
 
 import { NextResponse } from 'next/server';
