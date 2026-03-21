@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabaseClient';
+import { emitEvent } from '../../_lib/events/emitEvent';
 
 // ---------------- Helpers ----------------
 const clamp01 = (x) => Math.max(0, Math.min(1, x));
@@ -113,7 +114,7 @@ const reflectionI18n = {
   ar: 'الخطوات الصغيرة تصنع زخمًا — نشاطك القصير التالي جاهز.',
 };
 
-// ---------------- Keyword & Title translation (API-side, Option A) ----------------
+// ---------------- Keyword & Title translation ----------------
 const KEYWORD_I18N = {
   es: {
     'keywords': 'Palabras clave',
@@ -201,7 +202,7 @@ function translateTerm(term = '', lang = 'en') {
   const map = KEYWORD_I18N[lang] || {};
   const t = String(term || '').trim();
   const key = t.toLowerCase();
-  return map[key] || t; // fallback
+  return map[key] || t;
 }
 function translateTitle(title = '', lang = 'en') {
   const map = TITLE_I18N[lang] || {};
@@ -399,7 +400,7 @@ export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
 
-    // 🔹 CHANGE 1: read `id` first (so it matches your URL)
+    // Accept `id` first so it matches your URL (/assessment/result?id=<uuid>&language=en)
     const assessmentId =
       searchParams.get('id') ||
       searchParams.get('assessment_id') ||
@@ -433,7 +434,7 @@ export async function GET(request) {
       interview: interviewPct,
     });
 
-    // 4) Flight‑path steps (localized)
+    // 4) Flight‑path steps (localized) – NOTE: call the function form
     const steps = i18n.steps[path]({ lang }).map((s) => ({
       title: s.title,
       why: s.why,
@@ -458,7 +459,9 @@ export async function GET(request) {
           .select('provider, verified')
           .eq('user_id', userId);
         certificates = Array.isArray(data) ? data : [];
-      } catch {/* ignore */}
+      } catch {
+        // ignore
+      }
     }
 
     const roleSuggestionsRaw = buildRoleSuggestions({
@@ -469,7 +472,7 @@ export async function GET(request) {
     });
     const roleSuggestions = localizeRoleSuggestions(roleSuggestionsRaw, lang);
 
-    // 🔹 CHANGE 2: build compact "result" payload the page can render
+    // 7) Build compact result payload (for the page) + compute score
     const score = Math.max(0, Math.min(100, Math.round((overall / 4) * 100)));
     const level =
       lvl?.tier === 'Advanced'   ? 'Strengthening' :
@@ -486,7 +489,7 @@ export async function GET(request) {
       pathway: steps,
     };
 
-    // 🔹 CHANGE 3: best‑effort upsert into public.assessment_results
+    // 8) Best‑effort upsert into public.assessment_results (does not block UI)
     try {
       await supabase
         .from('assessment_results')
@@ -495,12 +498,19 @@ export async function GET(request) {
       console.error('Upsert assessment_results failed (continuing):', e?.message || e);
     }
 
-    // 🔹 CHANGE 4: return both shapes (back‑compat + new)
+    // 9) NEW: emit `result_computed` for ASM
+    await emitEvent({
+      participant_id: null,
+      actor_role: 'system',
+      event_type: 'result_computed',
+      payload: { assessment_id: assessmentId, level, score },
+    });
+
+    // 10) Return both shapes: new compact `result` + rich fields (back‑compat)
     return NextResponse.json({
       ok: true,
       computed: true,
-      result: resultPayload, // ← what the page expects
-      // keep your richer data for any consumers that already rely on it
+      result: resultPayload,            // what the Results page expects
       assessmentId,
       language: lang,
       levels: { overall: lvl, byCategory },
