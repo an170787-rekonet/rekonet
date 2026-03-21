@@ -25,7 +25,6 @@ function decidePath({ overall, byCat, proSignals = 0, foundationsSignals = 0 }) 
   return overall >= 3.2 ? 'precision' : 'foundations';
 }
 
-// Weighted progress (defaults)
 function computeProgress({ levelCode, activities = 0, cv = 0, interview = 0 }) {
   const levelScore = { L1: 25, L2: 50, L3: 70, L4: 85 }[levelCode] || 25;
   const p = 0.35 * levelScore + 0.25 * activities + 0.25 * cv + 0.15 * interview;
@@ -149,38 +148,38 @@ const KEYWORD_I18N = {
     'h&s': 'الصحة والسلامة',
     'health & safety': 'الصحة والسلامة',
     'food hygiene': 'النظافة الغذائية',
-'rms': 'نظام إدارة المخزون',
-'picking list': 'قائمة الالتقاط',
-'packing list': 'قائمة التعبئة',
-'warehouse operations': 'عمليات المستودع',    
+    'rms': 'نظام إدارة المخزون',
+    'picking list': 'قائمة الالتقاط',
+    'packing list': 'قائمة التعبئة',
+    'warehouse operations': 'عمليات المستودع',
   },
-  fr: { 
+  fr: {
     'keywords': 'Mots‑clés',
-  'rms': 'système de gestion des stocks',
+    'rms': 'système de gestion des stocks',
     'picking list': 'liste de prélèvement',
     'packing list': 'liste de colisage',
-    'warehouse operations': "opérations d’entrepôt",     
+    'warehouse operations': "opérations d’entrepôt",
   },
-  pt: { 
-    'keywords': 'Palavras‑chave', 
-  'rms': 'sistema de gestão de inventário',
-  'picking list': 'lista de separação',
-  'packing list': 'lista de embalagem',
-  'warehouse operations': 'operações de armazém',
+  pt: {
+    'keywords': 'Palavras‑chave',
+    'rms': 'sistema de gestão de inventário',
+    'picking list': 'lista de separação',
+    'packing list': 'lista de embalagem',
+    'warehouse operations': 'operações de armazém',
   },
-  ta: { 
-    'keywords': 'முக்கிய சொற்கள்', 
-  'rms': 'சரக்கு மேலாண்மை அமைப்பு',
-  'picking list': 'எடுத்தல் பட்டியல்',
-  'packing list': 'பேக்கிங் பட்டியல்',
-  'warehouse operations': 'கிடங்கு செயல்பாடுகள்',
+  ta: {
+    'keywords': 'முக்கிய சொற்கள்',
+    'rms': 'சரக்கு மேலாண்மை அமைப்பு',
+    'picking list': 'எடுத்தல் பட்டியல்',
+    'packing list': 'பேக்கிங் பட்டியல்',
+    'warehouse operations': 'கிடங்கு செயல்பாடுகள்',
   },
-  uk: { 
+  uk: {
     'keywords': 'Ключові слова',
-  'rms': 'система управління запасами',
-  'picking list': 'відбірковий лист',
-  'packing list': 'пакувальний лист',
-  'warehouse operations': 'складські операції',
+    'rms': 'система управління запасами',
+    'picking list': 'відбірковий лист',
+    'packing list': 'пакувальний лист',
+    'warehouse operations': 'складські операції',
   },
   en: {},
 };
@@ -202,7 +201,7 @@ function translateTerm(term = '', lang = 'en') {
   const map = KEYWORD_I18N[lang] || {};
   const t = String(term || '').trim();
   const key = t.toLowerCase();
-  return map[key] || t; // fallback to original term
+  return map[key] || t; // fallback
 }
 function translateTitle(title = '', lang = 'en') {
   const map = TITLE_I18N[lang] || {};
@@ -357,7 +356,7 @@ function buildRoleSuggestions({ profiles, levelCode, interviewPct, certificates 
 
   for (const p of profiles) {
     const needsLevel = p.min_overall_level || 'L1';
-    const meetsLevel = meetLevel(levelCode, needsLevel);
+    const meetsOverall = meetLevel(levelCode, needsLevel);
 
     const meetsInterview = p.min_interview_score
       ? interviewPct >= Math.min(100, Math.round((p.min_interview_score / 18) * 100))
@@ -369,8 +368,7 @@ function buildRoleSuggestions({ profiles, levelCode, interviewPct, certificates 
     );
 
     const gaps = [];
-
-    if (!meetsLevel) gaps.push({ type: 'level', key: needsLevel, why: 'Increase overall level' });
+    if (!meetsOverall) gaps.push({ type: 'level', key: needsLevel, why: 'Increase overall level' });
     if (!meetsInterview) gaps.push({ type: 'interview', key: p.min_interview_score || 0, why: 'Build interview score' });
 
     if (Array.isArray(p.must_have_keywords) && p.must_have_keywords.length) {
@@ -400,9 +398,19 @@ function buildRoleSuggestions({ profiles, levelCode, interviewPct, certificates 
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
-    const assessmentId = searchParams.get('assessment_id') || searchParams.get('assessmentId') || 'demo';
+
+    // 🔹 CHANGE 1: read `id` first (so it matches your URL)
+    const assessmentId =
+      searchParams.get('id') ||
+      searchParams.get('assessment_id') ||
+      searchParams.get('assessmentId');
+
     const lang = (searchParams.get('language') || searchParams.get('lang') || 'en').toLowerCase();
     const userId = searchParams.get('user_id') || null;
+
+    if (!assessmentId) {
+      return NextResponse.json({ ok: false, error: 'id missing' }, { status: 400 });
+    }
 
     // 1) Category means
     const byCategory = await fetchCategoryMeans(assessmentId);
@@ -425,7 +433,7 @@ export async function GET(request) {
       interview: interviewPct,
     });
 
-    // 4) Flight‑path steps (localized) — CORRECT CALL
+    // 4) Flight‑path steps (localized)
     const steps = i18n.steps[path]({ lang }).map((s) => ({
       title: s.title,
       why: s.why,
@@ -450,7 +458,7 @@ export async function GET(request) {
           .select('provider, verified')
           .eq('user_id', userId);
         certificates = Array.isArray(data) ? data : [];
-      } catch {}
+      } catch {/* ignore */}
     }
 
     const roleSuggestionsRaw = buildRoleSuggestions({
@@ -461,8 +469,38 @@ export async function GET(request) {
     });
     const roleSuggestions = localizeRoleSuggestions(roleSuggestionsRaw, lang);
 
-    // 7) Respond
+    // 🔹 CHANGE 2: build compact "result" payload the page can render
+    const score = Math.max(0, Math.min(100, Math.round((overall / 4) * 100)));
+    const level =
+      lvl?.tier === 'Advanced'   ? 'Strengthening' :
+      lvl?.tier === 'Proficient' ? 'Developing'    :
+      lvl?.tier === 'Developing' ? 'Developing'    :
+                                   'Emerging';
+
+    const resultPayload = {
+      assessment_id: assessmentId,
+      level,
+      score,
+      goal_title: summary?.headline || 'Your starting point',
+      role_suggestions: roleSuggestions,
+      pathway: steps,
+    };
+
+    // 🔹 CHANGE 3: best‑effort upsert into public.assessment_results
+    try {
+      await supabase
+        .from('assessment_results')
+        .upsert(resultPayload, { onConflict: 'assessment_id' });
+    } catch (e) {
+      console.error('Upsert assessment_results failed (continuing):', e?.message || e);
+    }
+
+    // 🔹 CHANGE 4: return both shapes (back‑compat + new)
     return NextResponse.json({
+      ok: true,
+      computed: true,
+      result: resultPayload, // ← what the page expects
+      // keep your richer data for any consumers that already rely on it
       assessmentId,
       language: lang,
       levels: { overall: lvl, byCategory },
