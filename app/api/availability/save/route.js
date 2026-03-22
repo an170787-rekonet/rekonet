@@ -1,37 +1,48 @@
 // app/api/availability/save/route.js
-import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+export const runtime = 'nodejs';
+import { NextResponse } from 'next/server';
 
-export const dynamic = "force-dynamic";
+// ⬇️ Adjust these two lines if your helpers live elsewhere
+import { supabaseAdmin } from '../../_lib/supabase';
+import { emitEvent } from '../../_lib/events/emitEvent';
 
-function getServerSupabase() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY; // server only
-  if (!url || !key) throw new Error("Missing Supabase env vars");
-  return createClient(url, key);
-}
-
-export async function POST(req) {
+export async function POST(request) {
   try {
-    const supabase = getServerSupabase();
-    const body = await req.json(); // { assessmentId, ...fields }
-    const { assessmentId, ...fields } = body;
+    const body = await request.json().catch(() => ({}));
+    const assessment_id = body?.assessment_id;
+    const availability = body?.availability; // any JSON object
 
-    // TODO: adjust to your schema/table name & conflict target
-    const { data, error } = await supabase
-      .from("availability")
-      .upsert(
-        { assessment_id: assessmentId, ...fields },
-        { onConflict: "assessment_id" }
-      )
-      .select()
-      .maybeSingle();
+    if (!assessment_id || !availability) {
+      return NextResponse.json(
+        { ok: false, error: 'assessment_id and availability are required' },
+        { status: 400 }
+      );
+    }
 
-    if (error) throw error;
+    // Upsert so each assessment keeps one current availability entry
+    const { data, error } = await supabaseAdmin
+      .from('availability')
+      .upsert({ assessment_id, availability }, { onConflict: 'assessment_id' })
+      .select('*')
+      .single();
 
-    return NextResponse.json({ ok: true, availability: data }, { status: 200 });
-  } catch (err) {
-    return NextResponse.json({ ok: false, error: String(err) }, { status: 500 });
+    if (error) {
+      return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    }
+
+    // Non‑fatal if event emit fails
+    try {
+      await emitEvent({
+        actor_role: 'participant',
+        event_type: 'availability_saved',
+        payload: { assessment_id }
+      });
+    } catch (e) {
+      console.error('emitEvent(availability_saved) failed:', e);
+    }
+
+    return NextResponse.json({ ok: true, availability: data });
+  } catch (e) {
+    return NextResponse.json({ ok: false, error: String(e?.message || e) }, { status: 500 });
   }
 }
-``
