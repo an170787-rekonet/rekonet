@@ -9,6 +9,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 
 // Adjust paths if needed to match your repo structure
@@ -232,7 +233,7 @@ function ResultContent() {
             View your suggested pathway
           </button>
 
-        {/* tiny live message so you know the handler ran */}
+          {/* tiny live message so you know the handler ran */}
           {jumpMsg ? (
             <span
               className="text-sm"
@@ -256,7 +257,7 @@ function ResultContent() {
       </section>
 
       {/* ===== Quick evidence add (micro‑win) — Step 2.3 ===== */}
-      <section className="mb-10" aria-label="Quick evidence add">
+      <section className="mb-6" aria-label="Quick evidence add">
         <h4 className="text-lg font-medium mb-2">Add a quick piece of evidence</h4>
         <p className="text-sm text-gray-600 mb-2">
           Paste a link that shows your progress (a document, portfolio item, or anything you’re proud of).
@@ -267,7 +268,7 @@ function ResultContent() {
             value={evidenceUrl}
             onChange={(e) => setEvidenceUrl(e.target.value)}
             placeholder="https://example.com/my-proof"
-            className="border rounded px-3 py-2 w/full max-w-xl"
+            className="border rounded px-3 py-2 w-full max-w-xl"
             aria-label="Evidence link"
           />
           <button
@@ -281,6 +282,18 @@ function ResultContent() {
         </div>
         {evMsg ? <div className="mt-2 text-sm">{evMsg}</div> : null}
       </section>
+
+      {/* ===== Link to Availability (Step 3 entry point) ===== */}
+      <div className="mb-10">
+        <Link
+          href={`/availability?id=${encodeURIComponent(
+            assessmentId || ""
+          )}&language=${encodeURIComponent(language)}`}
+          className="btn btn-outline"
+        >
+          Set my availability
+        </Link>
+      </div>
 
       {/* ===== Pathway section with anchor ===== */}
       <section aria-label="Suggested pathway" className="mb-14">
@@ -315,7 +328,8 @@ function ResultContent() {
           </div>
         ) : (
           <p className="text-sm text-gray-600">
-            We’ll suggest a simple set of actions to help you keep momentum. (No wrong answers — just next steps.)
+            We’ll suggest a simple set of actions to help you keep momentum. (No
+            wrong answers — just next steps.)
           </p>
         )}
       </section>
