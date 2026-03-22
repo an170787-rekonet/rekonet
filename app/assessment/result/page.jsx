@@ -11,14 +11,14 @@ import React, {
 } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
-// Adjust paths as needed to match your repo
+// Adjust these import paths to match your repo structure
 import SummaryBand from "../../components/results/SummaryBand";
 import GapChips from "../../components/results/GapChips";
 import RoleRecommendations from "../../components/results/RoleRecommendations";
 
 /**
- * Keep a Suspense boundary around any subtree that calls useSearchParams().
- * (Required by Next.js prerendering rules.)
+ * Suspense boundary is required because ResultContent uses useSearchParams().
+ * This avoids Next.js prerender build errors. [1](https://oneuptime.com/blog/post/2026-01-24-nextjs-usesearchparams-ssr-issues/view)
  */
 export default function AssessmentResultPage() {
   return (
@@ -39,11 +39,10 @@ function ResultContent() {
   const router = useRouter();
   const pathname = usePathname();
 
-  // Read query params
+  // Read query params (kept consistent with Update v16’s contract)
   const qs = useMemo(() => new URLSearchParams(sp?.toString() ?? ""), [sp]);
-  const assessmentId = qs.get("id");
+  const assessmentId = qs.get("id");       // /api/assessment/result?id=… returns { ok:true, result:{…} } [2](https://github.com/vercel/next.js/discussions/61654)
   const language = (qs.get("language") || "en").toLowerCase();
-  const openTarget = qs.get("open"); // used later by Step 3
 
   // Local state
   const [loading, setLoading] = useState(true);
@@ -51,25 +50,39 @@ function ResultContent() {
   const [error, setError] = useState("");
   const [justScrolled, setJustScrolled] = useState(false);
 
-  // --- Pathway anchor ref ---
+  // --- Pathway anchor ref + highlight ---
   const pathwayRef = useRef(null);
 
-  // Helper to visibly highlight the section momentarily
   const flashHighlight = useCallback(() => {
     setJustScrolled(true);
-    // remove highlight after 1s
-    setTimeout(() => setJustScrolled(false), 1000);
+    setTimeout(() => setJustScrolled(false), 900);
   }, []);
 
-  // Smooth scroll to pathway; center it for a visible movement
-  const handleScrollToPathway = useCallback(() => {
+  const scrollToPathway = useCallback(() => {
     const el = pathwayRef.current || document.getElementById("pathway");
     if (!el) return;
+    // JS fallback to ensure a visible movement and focus for a11y
     el.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
-    // a11y: move focus to the heading so screen readers announce it
     setTimeout(() => el?.focus?.(), 350);
     flashHighlight();
   }, [flashHighlight]);
+
+  // Button handler — prefer a native hash jump, then JS fallback to ensure visibility
+  const handleGoToPathway = useCallback(
+    (e) => {
+      e.preventDefault();
+      // 1) Native anchor navigation (most reliable across containers)
+      if (typeof window !== "undefined") {
+        // preserve existing querystring; just add #pathway
+        const url = new URL(window.location.href);
+        url.hash = "pathway";
+        window.history.replaceState({}, "", url.toString());
+      }
+      // 2) Fallback animation & focus (visible confirmation)
+      scrollToPathway();
+    },
+    [scrollToPathway]
+  );
 
   // Fetch compute-on-read result (kept aligned with Update v16)
   useEffect(() => {
@@ -110,12 +123,20 @@ function ResultContent() {
     };
   }, [assessmentId, language]);
 
-  // Support deep-linking if later we use &open=pathway
+  // If user loaded with #pathway in the URL, ensure the anchor is focused and highlighted
   useEffect(() => {
-    if (openTarget === "pathway") {
-      handleScrollToPathway();
+    if (typeof window === "undefined") return;
+    if (window.location.hash === "#pathway") {
+      // Delay slightly to ensure the node is in DOM after render
+      setTimeout(() => {
+        const el = pathwayRef.current || document.getElementById("pathway");
+        if (!el) return;
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        el.focus?.();
+        flashHighlight();
+      }, 150);
     }
-  }, [openTarget, handleScrollToPathway]);
+  }, [flashHighlight]);
 
   if (loading) {
     return (
@@ -148,16 +169,16 @@ function ResultContent() {
           language={language}
         />
 
-        {/* Single “View your suggested pathway” button (remove duplicates) */}
+        {/* Single “View your suggested pathway” button */}
         <div className="mt-4 flex items-center gap-3">
-          <button
-            type="button"
-            onClick={handleScrollToPathway}
+          <a
+            href="#pathway"
+            onClick={handleGoToPathway}
             className="btn btn-primary"
             aria-describedby="pathway"
           >
             View your suggested pathway
-          </button>
+          </a>
         </div>
       </header>
 
@@ -179,11 +200,9 @@ function ResultContent() {
           tabIndex={-1}
           className="text-xl font-semibold mb-4"
           style={{
-            // visible highlight after scroll to confirm movement
             outline: justScrolled ? "3px solid #3b82f6" : "none",
             outlineOffset: justScrolled ? "4px" : "0",
-            // if you have a sticky header, this avoids hiding the heading under it
-            scrollMarginTop: "80px",
+            scrollMarginTop: "80px", // adjust if you have a sticky header
           }}
         >
           Your suggested pathway
