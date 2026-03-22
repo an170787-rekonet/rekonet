@@ -43,21 +43,24 @@ function ResultContent() {
   const qs = useMemo(() => new URLSearchParams(sp?.toString() ?? ""), [sp]);
   const assessmentId = qs.get("id"); // /api/assessment/result?id=... returns { ok:true, result:{...} }
   const language = (qs.get("language") || "en").toLowerCase();
-  const openTarget = qs.get("open"); // used in Step 3 to bring user back to this page
+  const openTarget = qs.get("open"); // used to auto-focus sections on return
 
   // --- Local state ---
   const [loading, setLoading] = useState(true);
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
 
-  // for Step 1 scroll feedback
+  // Step 1 scroll feedback
   const [justScrolled, setJustScrolled] = useState(false);
   const [jumpMsg, setJumpMsg] = useState("");
 
-  // for Step 2.3 evidence add
+  // Step 2.3 evidence add
   const [evidenceUrl, setEvidenceUrl] = useState("");
   const [evMsg, setEvMsg] = useState("");
   const [evBusy, setEvBusy] = useState(false);
+
+  // Step 4: finish for now
+  const [finishBusy, setFinishBusy] = useState(false);
 
   // --- Pathway anchor ref + highlight ---
   const pathwayRef = useRef(null);
@@ -144,6 +147,27 @@ function ResultContent() {
     }
   }, [assessmentId, evidenceUrl]);
 
+  // --- Step 4: finish for now → save checkpoint + redirect to /dashboard ---
+  const finishForNow = useCallback(async () => {
+    if (!assessmentId) return;
+    try {
+      setFinishBusy(true);
+      await fetch("/api/journey/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          assessment_id: assessmentId,
+          step_key: "dashboard",
+          payload: { from: "result" },
+        }),
+      });
+      // Redirect regardless to keep UX flowing
+      router.push("/dashboard");
+    } finally {
+      setFinishBusy(false);
+    }
+  }, [assessmentId, router]);
+
   // --- Fetch compute-on-read result (kept aligned with your API contract) ---
   useEffect(() => {
     let cancelled = false;
@@ -184,7 +208,7 @@ function ResultContent() {
   }, [assessmentId, language]);
 
   // OPTIONAL: when we come back from Availability with ?open=availability,
-  // we can reuse the pathway section as the “hub” anchor for now.
+  // reuse the pathway section as the “hub” anchor for now.
   useEffect(() => {
     if (openTarget === "availability") {
       scrollToPathway();
@@ -222,8 +246,8 @@ function ResultContent() {
           language={language}
         />
 
-        {/* ✅ Single “View your suggested pathway” button (no duplicates here) */}
-        <div className="mt-4 flex items-center gap-3">
+        {/* Top actions */}
+        <div className="mt-4 flex items-center gap-3 flex-wrap">
           <button
             type="button"
             onClick={handleGoToPathway}
@@ -243,6 +267,16 @@ function ResultContent() {
               {jumpMsg}
             </span>
           ) : null}
+
+          {/* Step 4: Finish for now */}
+          <button
+            type="button"
+            onClick={finishForNow}
+            className="btn btn-outline"
+            disabled={finishBusy}
+          >
+            {finishBusy ? "Saving…" : "Finish for now"}
+          </button>
         </div>
       </header>
 
