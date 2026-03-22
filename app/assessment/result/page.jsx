@@ -42,6 +42,7 @@ function ResultContent() {
   const qs = useMemo(() => new URLSearchParams(sp?.toString() ?? ""), [sp]);
   const assessmentId = qs.get("id"); // /api/assessment/result?id=... returns { ok:true, result:{...} }
   const language = (qs.get("language") || "en").toLowerCase();
+  const openTarget = qs.get("open"); // used in Step 3 to bring user back to this page
 
   // --- Local state ---
   const [loading, setLoading] = useState(true);
@@ -181,6 +182,14 @@ function ResultContent() {
     };
   }, [assessmentId, language]);
 
+  // OPTIONAL: when we come back from Availability with ?open=availability,
+  // we can reuse the pathway section as the “hub” anchor for now.
+  useEffect(() => {
+    if (openTarget === "availability") {
+      scrollToPathway();
+    }
+  }, [openTarget, scrollToPathway]);
+
   if (loading) {
     return (
       <main className="container">
@@ -223,7 +232,7 @@ function ResultContent() {
             View your suggested pathway
           </button>
 
-          {/* tiny live message so you know the handler ran */}
+        {/* tiny live message so you know the handler ran */}
           {jumpMsg ? (
             <span
               className="text-sm"
@@ -258,7 +267,7 @@ function ResultContent() {
             value={evidenceUrl}
             onChange={(e) => setEvidenceUrl(e.target.value)}
             placeholder="https://example.com/my-proof"
-            className="border rounded px-3 py-2 w-full max-w-xl"
+            className="border rounded px-3 py-2 w/full max-w-xl"
             aria-label="Evidence link"
           />
           <button
