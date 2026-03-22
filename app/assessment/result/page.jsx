@@ -11,18 +11,14 @@ import React, {
 } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
-// Reuse your results components (adjust import paths to match your repo structure)
+// Adjust paths as needed to match your repo
 import SummaryBand from "../../components/results/SummaryBand";
 import GapChips from "../../components/results/GapChips";
 import RoleRecommendations from "../../components/results/RoleRecommendations";
-// If you also have a consolidated ResultView component, you can import and render it later.
-// import ResultView from "./components/ResultView";
 
 /**
- * BUILD FIX:
- * Next.js requires a Suspense boundary around any subtree that calls useSearchParams().
- * We render <ResultContent/> (which uses useSearchParams) inside <Suspense> here,
- * per the official guidance, to avoid the prerendering error.  [1](https://nextjs.org/docs/messages/missing-suspense-with-csr-bailout)
+ * Keep a Suspense boundary around any subtree that calls useSearchParams().
+ * (Required by Next.js prerendering rules.)
  */
 export default function AssessmentResultPage() {
   return (
@@ -43,27 +39,39 @@ function ResultContent() {
   const router = useRouter();
   const pathname = usePathname();
 
-  // Read query params (kept consistent with Update v16 contract)
+  // Read query params
   const qs = useMemo(() => new URLSearchParams(sp?.toString() ?? ""), [sp]);
-  const assessmentId = qs.get("id"); // results route accepts id=…  [4](https://maximusunitedkingdom-my.sharepoint.com/personal/ashley_neerohoo_maximusuk_co_uk/_layouts/15/Doc.aspx?sourcedoc=%7B5FEB9156-253A-4354-B13E-1F1130085B29%7D&file=Rekonet_Recovery_Update_v16_2026-03-21.docx&action=default&mobileredirect=true)
+  const assessmentId = qs.get("id");
   const language = (qs.get("language") || "en").toLowerCase();
-  const openTarget = qs.get("open"); // used later (Step 3) to open availability  [3](https://maximusunitedkingdom-my.sharepoint.com/personal/ashley_neerohoo_maximusuk_co_uk/_layouts/15/Doc.aspx?sourcedoc=%7B1E900587-7789-4AA7-B9EE-F5179EE4F487%7D&file=Rekonet_Recovery_Pause_v19_2026-03-21.docx&action=default&mobileredirect=true)
+  const openTarget = qs.get("open"); // used later by Step 3
 
-  // Local result state
+  // Local state
   const [loading, setLoading] = useState(true);
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
+  const [justScrolled, setJustScrolled] = useState(false);
 
-  // --- Step 1: Pathway anchor ref for smooth scroll ---
+  // --- Pathway anchor ref ---
   const pathwayRef = useRef(null);
 
-  const handleScrollToPathway = useCallback(() => {
-    pathwayRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    // a11y: focus after scroll so screen readers announce the section
-    setTimeout(() => pathwayRef.current?.focus?.(), 350);
+  // Helper to visibly highlight the section momentarily
+  const flashHighlight = useCallback(() => {
+    setJustScrolled(true);
+    // remove highlight after 1s
+    setTimeout(() => setJustScrolled(false), 1000);
   }, []);
 
-  // Fetch compute-on-read result (kept aligned with Update v16 shape)
+  // Smooth scroll to pathway; center it for a visible movement
+  const handleScrollToPathway = useCallback(() => {
+    const el = pathwayRef.current || document.getElementById("pathway");
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+    // a11y: move focus to the heading so screen readers announce it
+    setTimeout(() => el?.focus?.(), 350);
+    flashHighlight();
+  }, [flashHighlight]);
+
+  // Fetch compute-on-read result (kept aligned with Update v16)
   useEffect(() => {
     let cancelled = false;
 
@@ -84,7 +92,7 @@ function ResultContent() {
         if (cancelled) return;
 
         if (res.ok && json?.ok) {
-          setResult(json.result ?? null); // { level, score, goal_title, role_suggestions, pathway, ... }
+          setResult(json.result ?? null);
           setError("");
         } else {
           setError(json?.error || "Unable to load result");
@@ -102,7 +110,7 @@ function ResultContent() {
     };
   }, [assessmentId, language]);
 
-  // Optional: if later you navigate back with &open=pathway, auto-scroll to the anchor
+  // Support deep-linking if later we use &open=pathway
   useEffect(() => {
     if (openTarget === "pathway") {
       handleScrollToPathway();
@@ -130,7 +138,7 @@ function ResultContent() {
   const pathway = result?.pathway ?? [];
 
   return (
-    <main className="container">
+    <main className="container" style={{ scrollBehavior: "smooth" }}>
       {/* ===== Top summary area ===== */}
       <header className="mb-6">
         <SummaryBand
@@ -140,7 +148,7 @@ function ResultContent() {
           language={language}
         />
 
-        {/* --- NEW (Step 1): Button that scrolls to the pathway anchor --- */}
+        {/* Single “View your suggested pathway” button (remove duplicates) */}
         <div className="mt-4 flex items-center gap-3">
           <button
             type="button"
@@ -170,6 +178,13 @@ function ResultContent() {
           ref={pathwayRef}
           tabIndex={-1}
           className="text-xl font-semibold mb-4"
+          style={{
+            // visible highlight after scroll to confirm movement
+            outline: justScrolled ? "3px solid #3b82f6" : "none",
+            outlineOffset: justScrolled ? "4px" : "0",
+            // if you have a sticky header, this avoids hiding the heading under it
+            scrollMarginTop: "80px",
+          }}
         >
           Your suggested pathway
         </h3>
@@ -194,9 +209,6 @@ function ResultContent() {
           </p>
         )}
       </section>
-
-      {/* If you use a consolidated ResultView component, you can render it here */}
-      {/* <ResultView result={result} /> */}
     </main>
   );
 }
