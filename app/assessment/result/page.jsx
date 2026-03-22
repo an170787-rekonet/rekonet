@@ -11,14 +11,14 @@ import React, {
 } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
-// Adjust these import paths to match your repo structure
+// Adjust paths if needed to match your repo
 import SummaryBand from "../../components/results/SummaryBand";
 import GapChips from "../../components/results/GapChips";
 import RoleRecommendations from "../../components/results/RoleRecommendations";
 
 /**
  * Suspense boundary is required because ResultContent uses useSearchParams().
- * This avoids Next.js prerender build errors. [1](https://oneuptime.com/blog/post/2026-01-24-nextjs-usesearchparams-ssr-issues/view)
+ * This avoids the Next.js prerender build error about missing Suspense.  [1](https://oneuptime.com/blog/post/2026-01-24-nextjs-usesearchparams-ssr-issues/view)
  */
 export default function AssessmentResultPage() {
   return (
@@ -39,9 +39,9 @@ function ResultContent() {
   const router = useRouter();
   const pathname = usePathname();
 
-  // Read query params (kept consistent with Update v16’s contract)
+  // Read query params (kept consistent with Update v16 contract)
   const qs = useMemo(() => new URLSearchParams(sp?.toString() ?? ""), [sp]);
-  const assessmentId = qs.get("id");       // /api/assessment/result?id=… returns { ok:true, result:{…} } [2](https://github.com/vercel/next.js/discussions/61654)
+  const assessmentId = qs.get("id"); // Results API accepts id= and returns { ok:true, result:{...} }  [2](https://github.com/vercel/next.js/discussions/61654)
   const language = (qs.get("language") || "en").toLowerCase();
 
   // Local state
@@ -58,27 +58,39 @@ function ResultContent() {
     setTimeout(() => setJustScrolled(false), 900);
   }, []);
 
+  /**
+   * Robust scroll that always causes a visible movement:
+   * - compute absolute top for the heading
+   * - apply a negative offset (header clearance)
+   * - if already in view, force a small delta so the eye sees motion
+   */
   const scrollToPathway = useCallback(() => {
     const el = pathwayRef.current || document.getElementById("pathway");
-    if (!el) return;
-    // JS fallback to ensure a visible movement and focus for a11y
-    el.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+    if (!el || typeof window === "undefined") return;
+
+    const OFFSET = 120; // px; adjust if you have a taller sticky header
+    const rect = el.getBoundingClientRect();
+    const currentY = window.pageYOffset || document.documentElement.scrollTop || 0;
+    let targetTop = currentY + rect.top - OFFSET;
+
+    // If already roughly in place, force a little motion so it’s visible
+    const MIN_DELTA = 80; // px
+    if (Math.abs(targetTop - currentY) < MIN_DELTA) {
+      targetTop = currentY + (rect.top >= 0 ? MIN_DELTA : -MIN_DELTA);
+    }
+
+    window.scrollTo({ top: targetTop, behavior: "smooth" });
+
+    // a11y focus + visual confirmation
     setTimeout(() => el?.focus?.(), 350);
     flashHighlight();
   }, [flashHighlight]);
 
-  // Button handler — prefer a native hash jump, then JS fallback to ensure visibility
+  // Button handler
   const handleGoToPathway = useCallback(
     (e) => {
       e.preventDefault();
-      // 1) Native anchor navigation (most reliable across containers)
-      if (typeof window !== "undefined") {
-        // preserve existing querystring; just add #pathway
-        const url = new URL(window.location.href);
-        url.hash = "pathway";
-        window.history.replaceState({}, "", url.toString());
-      }
-      // 2) Fallback animation & focus (visible confirmation)
+      // Optional: keep URL clean (no hash), rely on manual scroll for consistent UX
       scrollToPathway();
     },
     [scrollToPathway]
@@ -123,21 +135,6 @@ function ResultContent() {
     };
   }, [assessmentId, language]);
 
-  // If user loaded with #pathway in the URL, ensure the anchor is focused and highlighted
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (window.location.hash === "#pathway") {
-      // Delay slightly to ensure the node is in DOM after render
-      setTimeout(() => {
-        const el = pathwayRef.current || document.getElementById("pathway");
-        if (!el) return;
-        el.scrollIntoView({ behavior: "smooth", block: "center" });
-        el.focus?.();
-        flashHighlight();
-      }, 150);
-    }
-  }, [flashHighlight]);
-
   if (loading) {
     return (
       <main className="container">
@@ -171,14 +168,14 @@ function ResultContent() {
 
         {/* Single “View your suggested pathway” button */}
         <div className="mt-4 flex items-center gap-3">
-          <a
-            href="#pathway"
+          <button
+            type="button"
             onClick={handleGoToPathway}
             className="btn btn-primary"
             aria-describedby="pathway"
           >
             View your suggested pathway
-          </a>
+          </button>
         </div>
       </header>
 
@@ -200,9 +197,11 @@ function ResultContent() {
           tabIndex={-1}
           className="text-xl font-semibold mb-4"
           style={{
+            // brief highlight so movement is clearly noticeable
             outline: justScrolled ? "3px solid #3b82f6" : "none",
             outlineOffset: justScrolled ? "4px" : "0",
-            scrollMarginTop: "80px", // adjust if you have a sticky header
+            // ensures heading is not hidden behind sticky UI
+            scrollMarginTop: "120px",
           }}
         >
           Your suggested pathway
