@@ -11,14 +11,14 @@ import React, {
 } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
-// Adjust paths if needed to match your repo
+// ⬇️ Adjust these import paths if your folder structure differs
 import SummaryBand from "../../components/results/SummaryBand";
 import GapChips from "../../components/results/GapChips";
 import RoleRecommendations from "../../components/results/RoleRecommendations";
 
 /**
- * Suspense boundary is required because ResultContent uses useSearchParams().
- * This avoids the Next.js prerender build error about missing Suspense.  [1](https://oneuptime.com/blog/post/2026-01-24-nextjs-usesearchparams-ssr-issues/view)
+ * We keep a Suspense boundary around the subtree that uses useSearchParams().
+ * This is required by Next.js so production builds don’t fail.
  */
 export default function AssessmentResultPage() {
   return (
@@ -39,18 +39,18 @@ function ResultContent() {
   const router = useRouter();
   const pathname = usePathname();
 
-  // Read query params (kept consistent with Update v16 contract)
+  // --- Read query params (stable contract from Update v16) ---
   const qs = useMemo(() => new URLSearchParams(sp?.toString() ?? ""), [sp]);
-  const assessmentId = qs.get("id"); // Results API accepts id= and returns { ok:true, result:{...} }  [2](https://github.com/vercel/next.js/discussions/61654)
+  const assessmentId = qs.get("id");
   const language = (qs.get("language") || "en").toLowerCase();
 
-  // Local state
+  // --- Local state for result payload and UX ---
   const [loading, setLoading] = useState(true);
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
   const [justScrolled, setJustScrolled] = useState(false);
 
-  // --- Pathway anchor ref + highlight ---
+  // --- Step 1: Pathway anchor + visual confirmation ---
   const pathwayRef = useRef(null);
 
   const flashHighlight = useCallback(() => {
@@ -59,44 +59,43 @@ function ResultContent() {
   }, []);
 
   /**
-   * Robust scroll that always causes a visible movement:
-   * - compute absolute top for the heading
-   * - apply a negative offset (header clearance)
-   * - if already in view, force a small delta so the eye sees motion
+   * Robust manual scroll that always causes a visible movement:
+   *  - compute a top target so the heading lands below any sticky UI
+   *  - if already near the target, enforce a small delta (so the eye sees motion)
+   *  - focus the heading and flash an outline briefly (a11y + feedback)
    */
   const scrollToPathway = useCallback(() => {
+    if (typeof window === "undefined") return;
     const el = pathwayRef.current || document.getElementById("pathway");
-    if (!el || typeof window === "undefined") return;
+    if (!el) return;
 
-    const OFFSET = 120; // px; adjust if you have a taller sticky header
+    const OFFSET = 120; // adjust if your header is taller/shorter
     const rect = el.getBoundingClientRect();
-    const currentY = window.pageYOffset || document.documentElement.scrollTop || 0;
+    const currentY =
+      window.pageYOffset || document.documentElement.scrollTop || 0;
     let targetTop = currentY + rect.top - OFFSET;
 
-    // If already roughly in place, force a little motion so it’s visible
-    const MIN_DELTA = 80; // px
+    // Ensure visible movement even if already in view
+    const MIN_DELTA = 80;
     if (Math.abs(targetTop - currentY) < MIN_DELTA) {
       targetTop = currentY + (rect.top >= 0 ? MIN_DELTA : -MIN_DELTA);
     }
 
     window.scrollTo({ top: targetTop, behavior: "smooth" });
 
-    // a11y focus + visual confirmation
-    setTimeout(() => el?.focus?.(), 350);
+    setTimeout(() => el?.focus?.(), 350); // a11y: announce heading
     flashHighlight();
   }, [flashHighlight]);
 
-  // Button handler
   const handleGoToPathway = useCallback(
     (e) => {
       e.preventDefault();
-      // Optional: keep URL clean (no hash), rely on manual scroll for consistent UX
       scrollToPathway();
     },
     [scrollToPathway]
   );
 
-  // Fetch compute-on-read result (kept aligned with Update v16)
+  // --- Fetch compute-on-read result (kept aligned with your API contract) ---
   useEffect(() => {
     let cancelled = false;
 
@@ -157,7 +156,7 @@ function ResultContent() {
 
   return (
     <main className="container" style={{ scrollBehavior: "smooth" }}>
-      {/* ===== Top summary area ===== */}
+      {/* ===== Summary ===== */}
       <header className="mb-6">
         <SummaryBand
           level={result?.level}
@@ -166,7 +165,7 @@ function ResultContent() {
           language={language}
         />
 
-        {/* Single “View your suggested pathway” button */}
+        {/* ✅ Single “View your suggested pathway” button (no duplicates) */}
         <div className="mt-4 flex items-center gap-3">
           <button
             type="button"
@@ -179,7 +178,7 @@ function ResultContent() {
         </div>
       </header>
 
-      {/* ===== “Gaps” / Next-step chips ===== */}
+      {/* ===== Gaps / Next-step chips ===== */}
       <section className="mb-8" aria-label="Suggested next steps overview">
         <GapChips result={result} />
       </section>
@@ -189,7 +188,7 @@ function ResultContent() {
         <RoleRecommendations items={result?.role_suggestions ?? []} />
       </section>
 
-      {/* ===== Pathway section with anchor ===== */}
+      {/* ===== Pathway (the anchor lives here) ===== */}
       <section aria-label="Suggested pathway" className="mb-14">
         <h3
           id="pathway"
@@ -197,10 +196,8 @@ function ResultContent() {
           tabIndex={-1}
           className="text-xl font-semibold mb-4"
           style={{
-            // brief highlight so movement is clearly noticeable
             outline: justScrolled ? "3px solid #3b82f6" : "none",
             outlineOffset: justScrolled ? "4px" : "0",
-            // ensures heading is not hidden behind sticky UI
             scrollMarginTop: "120px",
           }}
         >
