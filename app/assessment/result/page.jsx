@@ -9,15 +9,15 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
-// Adjust paths if needed to match your repo
+// Adjust paths if needed to match your repo structure
 import SummaryBand from "../../components/results/SummaryBand";
 import GapChips from "../../components/results/GapChips";
 import RoleRecommendations from "../../components/results/RoleRecommendations";
 
 /**
- * Suspense boundary is required because the child uses useSearchParams().
+ * Keep a Suspense boundary around the subtree that calls useSearchParams().
  * This avoids Next.js prerender errors in production builds.
  */
 export default function AssessmentResultPage() {
@@ -37,19 +37,25 @@ export default function AssessmentResultPage() {
 function ResultContent() {
   const sp = useSearchParams();
   const router = useRouter();
-  const pathname = usePathname();
 
-  // Read query params (kept consistent with Update v16 contract)
+  // --- Read query params (Update v16 contract) ---
   const qs = useMemo(() => new URLSearchParams(sp?.toString() ?? ""), [sp]);
   const assessmentId = qs.get("id"); // /api/assessment/result?id=... returns { ok:true, result:{...} }
   const language = (qs.get("language") || "en").toLowerCase();
 
-  // Local state
+  // --- Local state ---
   const [loading, setLoading] = useState(true);
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
+
+  // for Step 1 scroll feedback
   const [justScrolled, setJustScrolled] = useState(false);
   const [jumpMsg, setJumpMsg] = useState("");
+
+  // for Step 2.3 evidence add
+  const [evidenceUrl, setEvidenceUrl] = useState("");
+  const [evMsg, setEvMsg] = useState("");
+  const [evBusy, setEvBusy] = useState(false);
 
   // --- Pathway anchor ref + highlight ---
   const pathwayRef = useRef(null);
@@ -64,45 +70,79 @@ function ResultContent() {
   }, []);
 
   /**
-   * Robust scroll that always causes a visible movement:
-   * - compute absolute top for the heading
-   * - apply a negative offset (header clearance)
-   * - if already in view, force a small delta so the eye sees motion
+   * Robust manual scroll that always causes a visible movement:
+   *  - compute a target so the heading lands clearly below any sticky UI
+   *  - if already near, enforce a small delta so the eye sees motion
+   *  - focus the heading and flash an outline briefly (a11y + feedback)
    */
   const scrollToPathway = useCallback(() => {
     const el = pathwayRef.current || document.getElementById("pathway");
     if (!el || typeof window === "undefined") return;
 
-    const OFFSET = 120; // px; adjust if you have a taller sticky header
+    const OFFSET = 120; // adjust if you have a taller sticky header
     const rect = el.getBoundingClientRect();
     const currentY =
       window.pageYOffset || document.documentElement.scrollTop || 0;
     let targetTop = currentY + rect.top - OFFSET;
 
-    // If already roughly in place, force a little motion so it’s visible
-    const MIN_DELTA = 80; // px
+    // Ensure visible movement even if already in view
+    const MIN_DELTA = 80;
     if (Math.abs(targetTop - currentY) < MIN_DELTA) {
       targetTop = currentY + (rect.top >= 0 ? MIN_DELTA : -MIN_DELTA);
     }
 
     window.scrollTo({ top: targetTop, behavior: "smooth" });
 
-    // a11y focus + visual confirmation
+    // a11y: announce heading, plus visual confirmation
     setTimeout(() => el?.focus?.(), 350);
     flashHighlight();
   }, [flashHighlight]);
 
-  // Button handler
   const handleGoToPathway = useCallback(
     (e) => {
       e.preventDefault();
-      // Keep URL clean (no hash); rely on manual scroll for consistent UX
       scrollToPathway();
     },
     [scrollToPathway]
   );
 
-  // Fetch compute-on-read result (kept aligned with Update v16)
+  // --- Step 2.3: add evidence via API ---
+  const handleAddEvidence = useCallback(async () => {
+    setEvMsg("");
+    const url = evidenceUrl.trim();
+
+    if (!url) {
+      setEvMsg("Please paste a link to add as evidence.");
+      return;
+    }
+    if (!assessmentId) {
+      setEvMsg("Missing assessment id.");
+      return;
+    }
+
+    try {
+      setEvBusy(true);
+      const res = await fetch("/api/evidence/add", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ assessment_id: assessmentId, url }),
+      });
+      const json = await res.json();
+
+      if (res.ok && json?.ok) {
+        setEvMsg("Added to your evidence — well done!");
+        setEvidenceUrl("");
+      } else {
+        setEvMsg(json?.error || "Sorry — could not add evidence.");
+      }
+    } catch (e) {
+      setEvMsg(String(e?.message || e));
+    } finally {
+      setEvBusy(false);
+    }
+  }, [assessmentId, evidenceUrl]);
+
+  // --- Fetch compute-on-read result (kept aligned with your API contract) ---
   useEffect(() => {
     let cancelled = false;
 
@@ -183,7 +223,7 @@ function ResultContent() {
             View your suggested pathway
           </button>
 
-          {/* Tiny live message so you know the handler ran */}
+          {/* tiny live message so you know the handler ran */}
           {jumpMsg ? (
             <span
               className="text-sm"
@@ -204,6 +244,33 @@ function ResultContent() {
       {/* ===== Role recommendations ===== */}
       <section className="mb-10" aria-label="Role recommendations">
         <RoleRecommendations items={result?.role_suggestions ?? []} />
+      </section>
+
+      {/* ===== Quick evidence add (micro‑win) — Step 2.3 ===== */}
+      <section className="mb-10" aria-label="Quick evidence add">
+        <h4 className="text-lg font-medium mb-2">Add a quick piece of evidence</h4>
+        <p className="text-sm text-gray-600 mb-2">
+          Paste a link that shows your progress (a document, portfolio item, or anything you’re proud of).
+        </p>
+        <div className="flex items-center gap-2">
+          <input
+            type="url"
+            value={evidenceUrl}
+            onChange={(e) => setEvidenceUrl(e.target.value)}
+            placeholder="https://example.com/my-proof"
+            className="border rounded px-3 py-2 w-full max-w-xl"
+            aria-label="Evidence link"
+          />
+          <button
+            type="button"
+            onClick={handleAddEvidence}
+            className="btn btn-secondary"
+            disabled={evBusy}
+          >
+            {evBusy ? "Adding…" : "Add to my evidence"}
+          </button>
+        </div>
+        {evMsg ? <div className="mt-2 text-sm">{evMsg}</div> : null}
       </section>
 
       {/* ===== Pathway section with anchor ===== */}
@@ -239,8 +306,7 @@ function ResultContent() {
           </div>
         ) : (
           <p className="text-sm text-gray-600">
-            We’ll suggest a simple set of actions to help you keep momentum. (No
-            wrong answers — just next steps.)
+            We’ll suggest a simple set of actions to help you keep momentum. (No wrong answers — just next steps.)
           </p>
         )}
       </section>
