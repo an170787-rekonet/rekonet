@@ -1,72 +1,92 @@
 // app/availability/page.jsx
 "use client";
 
-import React, { Suspense } from "react";
+import React, { Suspense, useCallback, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-export const dynamic = "force-dynamic";
-
-function AvailabilityInner() {
-  const router = useRouter();
-  const sp = useSearchParams();
-  const qs = sp.toString();
-  const backHref = qs ? `/assessment/result?${qs}` : "/assessment/result";
-
+export default function AvailabilityPage() {
   return (
-    <main style={{ background: "#f9fafb", minHeight: "100vh" }}>
-      <section className="max-w-3xl mx-auto p-4">
-        <h1 style={{ fontSize: 24, fontWeight: 700 }}>Availability</h1>
-        <p style={{ color: "#374151", marginTop: 8 }}>
-          Set days and times that work best for you.
-        </p>
-
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            alert("Save availability — scaffold page.");
-            router.push(backHref);
-          }}
-          style={{
-            background: "#fff",
-            border: "1px solid #e5e7eb",
-            borderRadius: 12,
-            padding: 16,
-            marginTop: 12,
-          }}
-        >
-          <label style={{ display: "block", fontWeight: 600, marginBottom: 8 }}>
-            Working pattern
-          </label>
-          <select>
-            <option>Full-time</option>
-            <option>Part-time</option>
-            <option>Evenings</option>
-          </select>
-
-          <div style={{ height: 12 }} />
-
-          <button
-            type="submit"
-            style={{
-              background: "#000",
-              color: "#fff",
-              borderRadius: 8,
-              padding: "10px 16px",
-            }}
-          >
-            Save
-          </button>
-        </form>
-      </section>
-    </main>
+    <Suspense fallback={
+      <main className="container"><div className="my-8">Loading…</div></main>
+    }>
+      <AvailabilityClient />
+    </Suspense>
   );
 }
 
-export default function AvailabilityPage() {
-  // ✅ Wrap the hook-using component with Suspense
+function AvailabilityClient() {
+  const sp = useSearchParams();
+  const router = useRouter();
+
+  // read ?id=<uuid>&language=<code>
+  const qs = useMemo(() => new URLSearchParams(sp?.toString() ?? ""), [sp]);
+  const assessmentId = qs.get("id");
+  const language = (qs.get("language") || "en").toLowerCase();
+
+  // simple UI: free‑text notes for now (you can expand to checkboxes later)
+  const [notes, setNotes] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+
+  const handleSave = useCallback(async () => {
+    setMsg("");
+    if (!assessmentId) {
+      setMsg("Missing assessment id.");
+      return;
+    }
+    try {
+      setBusy(true);
+      const payload = {
+        assessment_id: assessmentId,
+        availability: { notes } // store as JSON for now
+      };
+      const res = await fetch("/api/availability/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const json = await res.json();
+      if (res.ok && json?.ok) {
+        // Redirect back to Results hub with open=availability
+        router.push(
+          `/assessment/result?id=${encodeURIComponent(assessmentId)}&language=${encodeURIComponent(language)}&open=availability`
+        );
+      } else {
+        setMsg(json?.error || "Sorry — could not save availability.");
+      }
+    } catch (e) {
+      setMsg(String(e?.message || e));
+    } finally {
+      setBusy(false);
+    }
+  }, [assessmentId, language, notes, router]);
+
   return (
-    <Suspense fallback={<div />}>
-      <AvailabilityInner />
-    </Suspense>
+    <main className="container">
+      <h1 className="text-2xl font-semibold mb-4">Your availability</h1>
+      <p className="text-sm text-gray-600 mb-4">
+        Add a quick note about when you can usually meet or work this week.
+      </p>
+
+      <textarea
+        value={notes}
+        onChange={(e) => setNotes(e.target.value)}
+        placeholder="e.g. Mon–Wed mornings, Thu afternoon"
+        rows={5}
+        className="border rounded w-full max-w-2xl px-3 py-2"
+      />
+
+      <div className="mt-4 flex gap-2">
+        <button
+          type="button"
+          onClick={handleSave}
+          className="btn btn-primary"
+          disabled={busy}
+        >
+          {busy ? "Saving…" : "Save"}
+        </button>
+        {msg ? <span className="text-sm ml-2">{msg}</span> : null}
+      </div>
+    </main>
   );
 }
