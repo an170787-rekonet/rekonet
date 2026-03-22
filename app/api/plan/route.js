@@ -2,8 +2,8 @@
 export const runtime = 'nodejs';
 import { NextResponse } from 'next/server';
 
-// If your admin client lives at app/_lib, this relative path is correct from here:
-import { supabaseAdmin } from '../../_lib/supabase';
+// ✅ Your helpers are under app/api/_lib, so from app/api/plan use ../_lib/…
+import { supabaseAdmin } from '../_lib/supabase';
 
 export async function GET(request) {
   try {
@@ -15,7 +15,7 @@ export async function GET(request) {
       return NextResponse.json({ ok: false, error: 'id missing' }, { status: 400 });
     }
 
-    // 1) Result row (level, pathway etc.)
+    // 1) Pull the computed result for this assessment
     const { data: resultRow } = await supabaseAdmin
       .from('assessment_results')
       .select('*')
@@ -31,7 +31,7 @@ export async function GET(request) {
       .gte('created_at', since.toISOString())
       .order('created_at', { ascending: false });
 
-    // 3) Simple scaffold (replace with your real logic later)
+    // 3) Simple scaffold — replace with your real logic later
     const weekly = [
       { text: 'Add 1 evidence note', minutes: 5,  kind: 'evidence' },
       { text: 'Tweak CV summary to match your target role', minutes: 10, kind: 'cv' },
