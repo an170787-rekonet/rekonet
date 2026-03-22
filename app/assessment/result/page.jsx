@@ -11,14 +11,14 @@ import React, {
 } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
-// ⬇️ Adjust these import paths if your folder structure differs
+// Adjust paths if needed to match your repo
 import SummaryBand from "../../components/results/SummaryBand";
 import GapChips from "../../components/results/GapChips";
 import RoleRecommendations from "../../components/results/RoleRecommendations";
 
 /**
- * We keep a Suspense boundary around the subtree that uses useSearchParams().
- * This is required by Next.js so production builds don’t fail.
+ * Suspense boundary is required because the child uses useSearchParams().
+ * This avoids Next.js prerender errors in production builds.
  */
 export default function AssessmentResultPage() {
   return (
@@ -39,63 +39,70 @@ function ResultContent() {
   const router = useRouter();
   const pathname = usePathname();
 
-  // --- Read query params (stable contract from Update v16) ---
+  // Read query params (kept consistent with Update v16 contract)
   const qs = useMemo(() => new URLSearchParams(sp?.toString() ?? ""), [sp]);
-  const assessmentId = qs.get("id");
+  const assessmentId = qs.get("id"); // /api/assessment/result?id=... returns { ok:true, result:{...} }
   const language = (qs.get("language") || "en").toLowerCase();
 
-  // --- Local state for result payload and UX ---
+  // Local state
   const [loading, setLoading] = useState(true);
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
   const [justScrolled, setJustScrolled] = useState(false);
+  const [jumpMsg, setJumpMsg] = useState("");
 
-  // --- Step 1: Pathway anchor + visual confirmation ---
+  // --- Pathway anchor ref + highlight ---
   const pathwayRef = useRef(null);
 
   const flashHighlight = useCallback(() => {
     setJustScrolled(true);
-    setTimeout(() => setJustScrolled(false), 900);
+    setJumpMsg("Jumped to your pathway");
+    setTimeout(() => {
+      setJustScrolled(false);
+      setJumpMsg("");
+    }, 900);
   }, []);
 
   /**
-   * Robust manual scroll that always causes a visible movement:
-   *  - compute a top target so the heading lands below any sticky UI
-   *  - if already near the target, enforce a small delta (so the eye sees motion)
-   *  - focus the heading and flash an outline briefly (a11y + feedback)
+   * Robust scroll that always causes a visible movement:
+   * - compute absolute top for the heading
+   * - apply a negative offset (header clearance)
+   * - if already in view, force a small delta so the eye sees motion
    */
   const scrollToPathway = useCallback(() => {
-    if (typeof window === "undefined") return;
     const el = pathwayRef.current || document.getElementById("pathway");
-    if (!el) return;
+    if (!el || typeof window === "undefined") return;
 
-    const OFFSET = 120; // adjust if your header is taller/shorter
+    const OFFSET = 120; // px; adjust if you have a taller sticky header
     const rect = el.getBoundingClientRect();
     const currentY =
       window.pageYOffset || document.documentElement.scrollTop || 0;
     let targetTop = currentY + rect.top - OFFSET;
 
-    // Ensure visible movement even if already in view
-    const MIN_DELTA = 80;
+    // If already roughly in place, force a little motion so it’s visible
+    const MIN_DELTA = 80; // px
     if (Math.abs(targetTop - currentY) < MIN_DELTA) {
       targetTop = currentY + (rect.top >= 0 ? MIN_DELTA : -MIN_DELTA);
     }
 
     window.scrollTo({ top: targetTop, behavior: "smooth" });
 
-    setTimeout(() => el?.focus?.(), 350); // a11y: announce heading
+    // a11y focus + visual confirmation
+    setTimeout(() => el?.focus?.(), 350);
     flashHighlight();
   }, [flashHighlight]);
 
+  // Button handler
   const handleGoToPathway = useCallback(
     (e) => {
       e.preventDefault();
+      // Keep URL clean (no hash); rely on manual scroll for consistent UX
       scrollToPathway();
     },
     [scrollToPathway]
   );
 
-  // --- Fetch compute-on-read result (kept aligned with your API contract) ---
+  // Fetch compute-on-read result (kept aligned with Update v16)
   useEffect(() => {
     let cancelled = false;
 
@@ -156,7 +163,7 @@ function ResultContent() {
 
   return (
     <main className="container" style={{ scrollBehavior: "smooth" }}>
-      {/* ===== Summary ===== */}
+      {/* ===== Top summary area ===== */}
       <header className="mb-6">
         <SummaryBand
           level={result?.level}
@@ -165,7 +172,7 @@ function ResultContent() {
           language={language}
         />
 
-        {/* ✅ Single “View your suggested pathway” button (no duplicates) */}
+        {/* ✅ Single “View your suggested pathway” button (no duplicates here) */}
         <div className="mt-4 flex items-center gap-3">
           <button
             type="button"
@@ -175,10 +182,21 @@ function ResultContent() {
           >
             View your suggested pathway
           </button>
+
+          {/* Tiny live message so you know the handler ran */}
+          {jumpMsg ? (
+            <span
+              className="text-sm"
+              style={{ color: "#2563eb", marginLeft: "6px" }}
+              aria-live="polite"
+            >
+              {jumpMsg}
+            </span>
+          ) : null}
         </div>
       </header>
 
-      {/* ===== Gaps / Next-step chips ===== */}
+      {/* ===== “Gaps” / Next-step chips ===== */}
       <section className="mb-8" aria-label="Suggested next steps overview">
         <GapChips result={result} />
       </section>
@@ -188,7 +206,7 @@ function ResultContent() {
         <RoleRecommendations items={result?.role_suggestions ?? []} />
       </section>
 
-      {/* ===== Pathway (the anchor lives here) ===== */}
+      {/* ===== Pathway section with anchor ===== */}
       <section aria-label="Suggested pathway" className="mb-14">
         <h3
           id="pathway"
@@ -196,8 +214,10 @@ function ResultContent() {
           tabIndex={-1}
           className="text-xl font-semibold mb-4"
           style={{
+            // brief highlight so movement is clearly noticeable
             outline: justScrolled ? "3px solid #3b82f6" : "none",
             outlineOffset: justScrolled ? "4px" : "0",
+            // ensures heading is not hidden behind sticky UI
             scrollMarginTop: "120px",
           }}
         >
