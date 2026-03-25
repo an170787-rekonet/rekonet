@@ -12,15 +12,10 @@ import React, {
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 
-// Adjust paths if needed to match your repo structure
 import SummaryBand from "../../components/results/SummaryBand";
 import GapChips from "../../components/results/GapChips";
 import RoleRecommendations from "../../components/results/RoleRecommendations";
 
-/**
- * Keep a Suspense boundary around the subtree that calls useSearchParams().
- * This avoids Next.js prerender errors in production builds.
- */
 export default function AssessmentResultPage() {
   return (
     <Suspense
@@ -39,30 +34,27 @@ function ResultContent() {
   const sp = useSearchParams();
   const router = useRouter();
 
-  // --- Read query params (Update v16 contract) ---
   const qs = useMemo(() => new URLSearchParams(sp?.toString() ?? ""), [sp]);
-  const assessmentId = qs.get("id"); // /api/assessment/result?id=... returns { ok:true, result:{...} }
+  const assessmentId = qs.get("id");
   const language = (qs.get("language") || "en").toLowerCase();
-  const openTarget = qs.get("open"); // used to auto-focus sections on return
+  const openTarget = qs.get("open");
 
-  // --- Local state ---
   const [loading, setLoading] = useState(true);
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
 
-  // Step 1 scroll feedback
   const [justScrolled, setJustScrolled] = useState(false);
   const [jumpMsg, setJumpMsg] = useState("");
 
-  // Step 2.3 evidence add
   const [evidenceUrl, setEvidenceUrl] = useState("");
   const [evMsg, setEvMsg] = useState("");
   const [evBusy, setEvBusy] = useState(false);
 
-  // Step 4: finish for now
   const [finishBusy, setFinishBusy] = useState(false);
 
-  // --- Pathway anchor ref + highlight ---
+  // ✅ NEW: Availability summary state
+  const [availabilitySummary, setAvailabilitySummary] = useState("");
+
   const pathwayRef = useRef(null);
 
   const flashHighlight = useCallback(() => {
@@ -74,23 +66,16 @@ function ResultContent() {
     }, 900);
   }, []);
 
-  /**
-   * Robust manual scroll that always causes a visible movement:
-   *  - compute a target so the heading lands clearly below any sticky UI
-   *  - if already near, enforce a small delta so the eye sees motion
-   *  - focus the heading and flash an outline briefly (a11y + feedback)
-   */
   const scrollToPathway = useCallback(() => {
     const el = pathwayRef.current || document.getElementById("pathway");
     if (!el || typeof window === "undefined") return;
 
-    const OFFSET = 120; // adjust if you have a taller sticky header
+    const OFFSET = 120;
     const rect = el.getBoundingClientRect();
     const currentY =
       window.pageYOffset || document.documentElement.scrollTop || 0;
     let targetTop = currentY + rect.top - OFFSET;
 
-    // Ensure visible movement even if already in view
     const MIN_DELTA = 80;
     if (Math.abs(targetTop - currentY) < MIN_DELTA) {
       targetTop = currentY + (rect.top >= 0 ? MIN_DELTA : -MIN_DELTA);
@@ -98,7 +83,6 @@ function ResultContent() {
 
     window.scrollTo({ top: targetTop, behavior: "smooth" });
 
-    // a11y: announce heading, plus visual confirmation
     setTimeout(() => el?.focus?.(), 350);
     flashHighlight();
   }, [flashHighlight]);
@@ -111,7 +95,7 @@ function ResultContent() {
     [scrollToPathway]
   );
 
-  // --- Step 2.3: add evidence via API ---
+  // === Quick Evidence Add ===
   const handleAddEvidence = useCallback(async () => {
     setEvMsg("");
     const url = evidenceUrl.trim();
@@ -147,7 +131,7 @@ function ResultContent() {
     }
   }, [assessmentId, evidenceUrl]);
 
-  // --- Step 4: finish for now → save checkpoint + redirect to /dashboard ---
+  // === Finish For Now ===
   const finishForNow = useCallback(async () => {
     if (!assessmentId) return;
     try {
@@ -161,14 +145,13 @@ function ResultContent() {
           payload: { from: "result" },
         }),
       });
-      // Redirect regardless to keep UX flowing
       router.push("/dashboard");
     } finally {
       setFinishBusy(false);
     }
   }, [assessmentId, router]);
 
-  // --- Fetch compute-on-read result (kept aligned with your API contract) ---
+  // === Load result ===
   useEffect(() => {
     let cancelled = false;
 
@@ -207,8 +190,25 @@ function ResultContent() {
     };
   }, [assessmentId, language]);
 
-  // OPTIONAL: when we come back from Availability with ?open=availability,
-  // reuse the pathway section as the “hub” anchor for now.
+  // === ✅ NEW: Load Availability Summary ===
+  useEffect(() => {
+    async function loadAvailability() {
+      if (!assessmentId) return;
+      try {
+        const res = await fetch(`/api/availability/get?id=${assessmentId}`, {
+          cache: "no-store",
+        });
+        const json = await res.json();
+        if (res.ok && json?.ok) {
+          const notes = json.availability?.availability?.notes ?? "";
+          if (notes) setAvailabilitySummary(notes);
+        }
+      } catch {}
+    }
+    loadAvailability();
+  }, [assessmentId]);
+
+  // === After returning from availability page ===
   useEffect(() => {
     if (openTarget === "availability") {
       scrollToPathway();
@@ -237,7 +237,6 @@ function ResultContent() {
 
   return (
     <main className="container" style={{ scrollBehavior: "smooth" }}>
-      {/* ===== Top summary area ===== */}
       <header className="mb-6">
         <SummaryBand
           level={result?.level}
@@ -245,6 +244,13 @@ function ResultContent() {
           goalTitle={result?.goal_title}
           language={language}
         />
+
+        {/* ✅ NEW AVAILABILITY SUMMARY BAND */}
+        {availabilitySummary ? (
+          <div className="mt-3 rounded border p-3 bg-blue-50 text-sm">
+            <strong>Availability saved:</strong> {availabilitySummary}
+          </div>
+        ) : null}
 
         {/* Top actions */}
         <div className="mt-4 flex items-center gap-3 flex-wrap">
@@ -257,7 +263,6 @@ function ResultContent() {
             View your suggested pathway
           </button>
 
-          {/* tiny live message so you know the handler ran */}
           {jumpMsg ? (
             <span
               className="text-sm"
@@ -268,7 +273,6 @@ function ResultContent() {
             </span>
           ) : null}
 
-          {/* Step 4: Finish for now */}
           <button
             type="button"
             onClick={finishForNow}
@@ -280,21 +284,19 @@ function ResultContent() {
         </div>
       </header>
 
-      {/* ===== “Gaps” / Next-step chips ===== */}
       <section className="mb-8" aria-label="Suggested next steps overview">
         <GapChips result={result} />
       </section>
 
-      {/* ===== Role recommendations ===== */}
       <section className="mb-10" aria-label="Role recommendations">
         <RoleRecommendations items={result?.role_suggestions ?? []} />
       </section>
 
-      {/* ===== Quick evidence add (micro‑win) — Step 2.3 ===== */}
       <section className="mb-6" aria-label="Quick evidence add">
         <h4 className="text-lg font-medium mb-2">Add a quick piece of evidence</h4>
         <p className="text-sm text-gray-600 mb-2">
-          Paste a link that shows your progress (a document, portfolio item, or anything you’re proud of).
+          Paste a link that shows your progress (a document, portfolio item, or anything
+          you’re proud of).
         </p>
         <div className="flex items-center gap-2">
           <input
@@ -317,7 +319,6 @@ function ResultContent() {
         {evMsg ? <div className="mt-2 text-sm">{evMsg}</div> : null}
       </section>
 
-      {/* ===== Link to Availability (Step 3 entry point) ===== */}
       <div className="mb-10">
         <Link
           href={`/availability?id=${encodeURIComponent(
@@ -329,7 +330,6 @@ function ResultContent() {
         </Link>
       </div>
 
-      {/* ===== Pathway section with anchor ===== */}
       <section aria-label="Suggested pathway" className="mb-14">
         <h3
           id="pathway"
@@ -337,10 +337,8 @@ function ResultContent() {
           tabIndex={-1}
           className="text-xl font-semibold mb-4"
           style={{
-            // brief highlight so movement is clearly noticeable
             outline: justScrolled ? "3px solid #3b82f6" : "none",
             outlineOffset: justScrolled ? "4px" : "0",
-            // ensures heading is not hidden behind sticky UI
             scrollMarginTop: "120px",
           }}
         >
@@ -362,11 +360,12 @@ function ResultContent() {
           </div>
         ) : (
           <p className="text-sm text-gray-600">
-            We’ll suggest a simple set of actions to help you keep momentum. (No
-            wrong answers — just next steps.)
+            We’ll suggest a simple set of actions to help you keep momentum. (No wrong
+            answers — just next steps.)
           </p>
         )}
       </section>
     </main>
   );
 }
+``
