@@ -1,11 +1,10 @@
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "../../../_lib/supabase";
+import { supabaseAdmin } from "../../../../lib/supabaseAdmin";
 
 export async function GET() {
   try {
-    // ✅ Load real questions from your DB
     const { data, error } = await supabaseAdmin
       .from("assessment_questions")
       .select("*")
