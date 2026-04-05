@@ -1,11 +1,12 @@
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "../../../../lib/supabaseAdmin";
+import { supabase } from "../../../../lib/supabaseClient";  // ✅ your real file
 
 export async function GET() {
   try {
-    const { data, error } = await supabaseAdmin
+    // ✅ Load real questions from your DB
+    const { data, error } = await supabase
       .from("assessment_questions")
       .select("*")
       .order("id", { ascending: true });
