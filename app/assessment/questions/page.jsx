@@ -55,36 +55,126 @@ function SimpleQuestions() {
   const assessment_id = qs.get("assessment_id");
   const language = (qs.get("language") || "en").toLowerCase();
 
-  // TEMP single question with category="confidence"
-  const question_id = "q1-confidence";
-  const category = "confidence";
-
-  const [score, setScore] = useState("3");
+  const [index, setIndex] = useState(0);
+  const [score, setScore] = useState(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
 
-  async function saveAndContinue() {
-    try {
-      setBusy(true);
-      setErr("");
+  const q = QUESTIONS[index];
 
-      // ✅ REAL ANSWER SUBMISSION
-      const res = await fetch("/api/assessment/submit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          assessment_id,
-          question_id,
-          category,
-          score: Number(score)
-        })
-      });
+  async function saveAnswer() {
+    if (!score) {
+      setErr("Please select a score.");
+      return;
+    }
 
-      const json = await res.json();
+    setBusy(true);
+    setErr("");
 
-      if (!json?.ok) {
-        throw new Error(json?.error || "Failed to save answer");
-      }
+    const res = await fetch("/api/assessment/submit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        assessment_id,
+        question_id: q.id,
+        category: q.category,
+        score: Number(score)
+      })
+    });
+
+    const json = await res.json();
+    if (!json.ok) {
+      setErr(json.error || "Could not save answer");
+      setBusy(false);
+      return;
+    }
+
+    if (index < QUESTIONS.length - 1) {
+      setIndex(index + 1);
+      setScore(null);
+      setBusy(false);
+      return;
+    }
+
+    const nextQs = new URLSearchParams();
+    nextQs.set("id", assessment_id);
+    nextQs.set("language", language);
+
+    router.push(`/assessment/result?${nextQs.toString()}`);
+  }
+
+  return (
+    <main style={{ minHeight: "100vh", background: "#fff" }}>
+      <section className="max-w-3xl mx-auto" style={{ padding: 24 }}>
+
+        <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 8 }}>
+          Your questions
+        </h1>
+
+        <div
+          style={{
+            border: "1px solid #e5e7eb",
+            borderRadius: 8,
+            padding: 16,
+            marginBottom: 16
+          }}
+        >
+          <p style={{ marginBottom: 12 }}>
+            {index + 1}. {q.text}
+          </p>
+
+          <div style={{ display: "flex", gap: 12 }}>
+            {[1, 2, 3, 4, 5].map((n) => (
+              <label key={n} style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                <input
+                  type="radio"
+                  name="score"
+                  value={n}
+                  checked={score === String(n)}
+                  onChange={(e) => setScore(e.target.value)}
+                />
+                <span>{n}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {err && (
+          <div
+            role="alert"
+            style={{
+              marginBottom: 12,
+              padding: "10px 12px",
+              borderRadius: 8,
+              border: "1px solid #fecaca",
+              background: "#fef2f2",
+              color: "#991b1b"
+            }}
+          >
+            {err}
+          </div>
+        )}
+
+        <button
+          type="button"
+          onClick={busy ? undefined : saveAnswer}
+          disabled={busy}
+          style={{
+            padding: "10px 14px",
+            borderRadius: 8,
+            border: "1px solid #2563eb",
+            background: busy ? "#93c5fd" : "#3b82f6",
+            color: "#fff",
+            cursor: busy ? "not-allowed" : "pointer",
+            fontWeight: 600
+          }}
+        >
+          {busy ? "Saving…" : index === QUESTIONS.length - 1 ? "See results" : "Next question"}
+        </button>
+      </section>
+    </main>
+  );
+}
 
       // ✅ After saving → navigate to results
       const nextQs = new URLSearchParams();
