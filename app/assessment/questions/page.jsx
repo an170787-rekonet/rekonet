@@ -1,33 +1,12 @@
 "use client";
 
-import React, { Suspense, useMemo, useState } from "react";
+import React, { Suspense, useMemo, useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
 // ------------------------------------------------------------
-// ✅ Temporary question list (Replace with DB later)
-// ------------------------------------------------------------
-const QUESTIONS = [
-  {
-    id: "cv-1",
-    category: "cv",
-    text: "I feel confident writing the main parts of my CV.",
-  },
-  {
-    id: "interview-1",
-    category: "interview",
-    text: "I feel confident answering common interview questions.",
-  },
-  {
-    id: "jobsearch-1",
-    category: "jobsearch",
-    text: "I know where to look for jobs that suit my skills.",
-  },
-];
-
-// ------------------------------------------------------------
-// ✅ Guard — ensures assessment_id + language exist
+// ✅ Guard: Makes sure assessment_id + language exist
 // ------------------------------------------------------------
 function Guard({ children }) {
   const sp = useSearchParams();
@@ -41,18 +20,25 @@ function Guard({ children }) {
     if (typeof window !== "undefined") {
       router.replace("/assessment/language");
     }
-    return (
-      <div style={{ padding: 24 }}>Sending you to language selection…</div>
-    );
+    return <div style={{ padding: 24 }}>Sending you to language selection…</div>;
   }
 
   return <>{children}</>;
 }
 
 // ------------------------------------------------------------
-// ✅ NEW full working assessment UI
+// ✅ Fetch questions from Supabase API route
 // ------------------------------------------------------------
-function SimpleQuestions() {
+async function fetchQuestions() {
+  const res = await fetch("/api/assessment/questions");
+  const json = await res.json();
+  return json?.questions || [];
+}
+
+// ------------------------------------------------------------
+// ✅ Dynamic Question UI Component
+// ------------------------------------------------------------
+function DynamicQuestions() {
   const sp = useSearchParams();
   const router = useRouter();
   const qs = useMemo(() => new URLSearchParams(sp?.toString() || ""), [sp]);
@@ -60,12 +46,26 @@ function SimpleQuestions() {
   const assessment_id = qs.get("assessment_id");
   const language = (qs.get("language") || "en").toLowerCase();
 
+  const [questions, setQuestions] = useState([]);
   const [index, setIndex] = useState(0);
   const [score, setScore] = useState(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
 
-  const q = QUESTIONS[index];
+  // ✅ Load questions on mount
+  useEffect(() => {
+    (async () => {
+      const q = await fetchQuestions();
+      setQuestions(q);
+    })();
+  }, []);
+
+  // ✅ Still loading
+  if (!questions.length) {
+    return <div style={{ padding: 24 }}>Loading questions…</div>;
+  }
+
+  const q = questions[index]; // Current question
 
   async function saveAnswer() {
     if (!score) {
@@ -93,22 +93,22 @@ function SimpleQuestions() {
         throw new Error(json.error || "Could not save answer.");
       }
 
-      // ✅ Move to next question
-      if (index < QUESTIONS.length - 1) {
+      // ✅ Next question
+      if (index < questions.length - 1) {
         setIndex(index + 1);
         setScore(null);
         setBusy(false);
         return;
       }
 
-      // ✅ Last question → go to results
+      // ✅ Last question → results
       const nextQs = new URLSearchParams();
       nextQs.set("id", assessment_id);
       nextQs.set("language", language);
       router.push(`/assessment/result?${nextQs.toString()}`);
 
     } catch (e) {
-      setErr(e.message || "Sorry, something went wrong.");
+      setErr(e.message || "Something went wrong");
       setBusy(false);
     }
   }
@@ -120,6 +120,7 @@ function SimpleQuestions() {
           Your questions
         </h1>
 
+        {/* Question Card */}
         <div
           style={{
             border: "1px solid #e5e7eb",
@@ -183,7 +184,7 @@ function SimpleQuestions() {
         >
           {busy
             ? "Saving…"
-            : index === QUESTIONS.length - 1
+            : index === questions.length - 1
             ? "See results"
             : "Next question"}
         </button>
@@ -193,13 +194,13 @@ function SimpleQuestions() {
 }
 
 // ------------------------------------------------------------
-// ✅ Page wrapper
+// ✅ Page Wrapper
 // ------------------------------------------------------------
 export default function QuestionsPage() {
   return (
     <Suspense fallback={<div style={{ padding: 24 }}>Loading…</div>}>
       <Guard>
-        <SimpleQuestions />
+        <DynamicQuestions />
       </Guard>
     </Suspense>
   );
