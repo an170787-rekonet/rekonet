@@ -6,39 +6,53 @@ import { supabaseAdmin } from '../../_lib/supabase';
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { assessment_id, question_id, category, score } = body || {};
+    const { assessment_id, question_id, value } = body || {};
 
-    if (!assessment_id || !question_id || !category || score == null) {
-      return NextResponse.json({ ok: false, error: 'Missing fields' }, { status: 400 });
+    // Validate required fields
+    if (!assessment_id || !question_id || value == null) {
+      return NextResponse.json(
+        { ok: false, error: 'Missing fields' },
+        { status: 400 }
+      );
     }
 
-    if (assessment_id !== 'demo') {
-      // ensure assessment exists
-      const { data: a, error: e1 } = await supabaseAdmin
-        .from('assessments')
-        .select('id')
-        .eq('id', assessment_id)
-        .single();
-      if (e1 || !a) return NextResponse.json({ ok: false, error: 'Unknown assessment_id' }, { status: 404 });
-    }
-
-    if (assessment_id === 'demo') {
-      // For demo IDs, emulate success without DB write
-      return NextResponse.json({
-        ok: true,
-        saved: { question_id, category, score: Number(score), created_at: new Date().toISOString() },
-      });
-    }
-
-    const { data, error } = await supabaseAdmin
-      .from('answers')
-      .insert({ assessment_id, question_id, category, score: Number(score) })
-      .select('id, assessment_id, question_id, category, score, created_at')
+    // Ensure assessment exists
+    const { data: assessment, error: assessErr } = await supabaseAdmin
+      .from('assessments')
+      .select('id')
+      .eq('id', assessment_id)
       .single();
 
-    if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    if (assessErr || !assessment) {
+      return NextResponse.json(
+        { ok: false, error: 'Unknown assessment_id' },
+        { status: 404 }
+      );
+    }
+
+    // Insert answer using correct schema: value, not score/category
+    const { data, error } = await supabaseAdmin
+      .from('answers')
+      .insert({
+        assessment_id,
+        question_id,
+        value: Number(value),
+      })
+      .select('*')
+      .single();
+
+    if (error) {
+      return NextResponse.json(
+        { ok: false, error: error.message },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json({ ok: true, saved: data });
   } catch (e) {
-    return NextResponse.json({ ok: false, error: String(e?.message || e) }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: String(e?.message || e) },
+      { status: 500 }
+    );
   }
 }
