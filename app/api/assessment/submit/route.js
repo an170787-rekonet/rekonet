@@ -6,37 +6,35 @@ import { supabaseAdmin } from '../../_lib/supabase';
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { assessment_id, question_id, value } = body || {};
+    const { assessment_id, question_id, category, score } = body || {};
 
-    // Validate required fields
-    if (!assessment_id || !question_id || value == null) {
+    if (!assessment_id || !question_id || !category || score == null) {
       return NextResponse.json(
-        { ok: false, error: 'Missing fields' },
+        { ok: false, error: 'Missing required fields' },
         { status: 400 }
       );
     }
 
-    // Ensure assessment exists
-    const { data: assessment, error: assessErr } = await supabaseAdmin
+    const { data: assessment, error: e1 } = await supabaseAdmin
       .from('assessments')
       .select('id')
       .eq('id', assessment_id)
       .single();
 
-    if (assessErr || !assessment) {
+    if (e1 || !assessment) {
       return NextResponse.json(
         { ok: false, error: 'Unknown assessment_id' },
         { status: 404 }
       );
     }
 
-    // Insert answer using correct schema: value, not score/category
     const { data, error } = await supabaseAdmin
       .from('answers')
       .insert({
         assessment_id,
         question_id,
-        value: Number(value),
+        category,
+        score: Number(score)
       })
       .select('*')
       .single();
