@@ -1,29 +1,34 @@
 "use client";
+
 import React, { Suspense, useMemo, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 
 export const dynamic = "force-dynamic";
-// ✅ Real question list (temporary until we load from database)
+
+// ------------------------------------------------------------
+// ✅ Temporary question list (Replace with DB later)
+// ------------------------------------------------------------
 const QUESTIONS = [
   {
     id: "cv-1",
     category: "cv",
-    text: "I feel confident writing the main parts of my CV."
+    text: "I feel confident writing the main parts of my CV.",
   },
   {
     id: "interview-1",
     category: "interview",
-    text: "I feel confident answering common interview questions."
+    text: "I feel confident answering common interview questions.",
   },
   {
     id: "jobsearch-1",
     category: "jobsearch",
-    text: "I know where to look for jobs that suit my skills."
-  }
+    text: "I know where to look for jobs that suit my skills.",
+  },
 ];
-// --------------------------------------------------------------
-// Guard — keeps the user in the correct assessment flow
-// --------------------------------------------------------------
+
+// ------------------------------------------------------------
+// ✅ Guard — ensures assessment_id + language exist
+// ------------------------------------------------------------
 function Guard({ children }) {
   const sp = useSearchParams();
   const router = useRouter();
@@ -33,20 +38,20 @@ function Guard({ children }) {
   const lang = qs.get("language");
 
   if (!id || !lang) {
-    if (typeof window !== "undefined") router.replace("/assessment/language");
+    if (typeof window !== "undefined") {
+      router.replace("/assessment/language");
+    }
     return (
-      <div style={{ padding: 24 }}>
-        Sending you to language selection…
-      </div>
+      <div style={{ padding: 24 }}>Sending you to language selection…</div>
     );
   }
 
   return <>{children}</>;
 }
 
-// --------------------------------------------------------------
-// SimpleQuestions — TEMP single‑question UI with REAL answer saving
-// --------------------------------------------------------------
+// ------------------------------------------------------------
+// ✅ NEW full working assessment UI
+// ------------------------------------------------------------
 function SimpleQuestions() {
   const sp = useSearchParams();
   const router = useRouter();
@@ -68,45 +73,49 @@ function SimpleQuestions() {
       return;
     }
 
-    setBusy(true);
     setErr("");
+    setBusy(true);
 
-    const res = await fetch("/api/assessment/submit", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        assessment_id,
-        question_id: q.id,
-        category: q.category,
-        score: Number(score)
-      })
-    });
+    try {
+      const res = await fetch("/api/assessment/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          assessment_id,
+          question_id: q.id,
+          category: q.category,
+          score: Number(score),
+        }),
+      });
 
-    const json = await res.json();
-    if (!json.ok) {
-      setErr(json.error || "Could not save answer");
+      const json = await res.json();
+      if (!json.ok) {
+        throw new Error(json.error || "Could not save answer.");
+      }
+
+      // ✅ Move to next question
+      if (index < QUESTIONS.length - 1) {
+        setIndex(index + 1);
+        setScore(null);
+        setBusy(false);
+        return;
+      }
+
+      // ✅ Last question → go to results
+      const nextQs = new URLSearchParams();
+      nextQs.set("id", assessment_id);
+      nextQs.set("language", language);
+      router.push(`/assessment/result?${nextQs.toString()}`);
+
+    } catch (e) {
+      setErr(e.message || "Sorry, something went wrong.");
       setBusy(false);
-      return;
     }
-
-    if (index < QUESTIONS.length - 1) {
-      setIndex(index + 1);
-      setScore(null);
-      setBusy(false);
-      return;
-    }
-
-    const nextQs = new URLSearchParams();
-    nextQs.set("id", assessment_id);
-    nextQs.set("language", language);
-
-    router.push(`/assessment/result?${nextQs.toString()}`);
   }
 
   return (
     <main style={{ minHeight: "100vh", background: "#fff" }}>
       <section className="max-w-3xl mx-auto" style={{ padding: 24 }}>
-
         <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 8 }}>
           Your questions
         </h1>
@@ -116,7 +125,7 @@ function SimpleQuestions() {
             border: "1px solid #e5e7eb",
             borderRadius: 8,
             padding: 16,
-            marginBottom: 16
+            marginBottom: 16,
           }}
         >
           <p style={{ marginBottom: 12 }}>
@@ -125,7 +134,10 @@ function SimpleQuestions() {
 
           <div style={{ display: "flex", gap: 12 }}>
             {[1, 2, 3, 4, 5].map((n) => (
-              <label key={n} style={{ display: "flex", gap: 6, alignItems: "center" }}>
+              <label
+                key={n}
+                style={{ display: "flex", gap: 6, alignItems: "center" }}
+              >
                 <input
                   type="radio"
                   name="score"
@@ -148,7 +160,7 @@ function SimpleQuestions() {
               borderRadius: 8,
               border: "1px solid #fecaca",
               background: "#fef2f2",
-              color: "#991b1b"
+              color: "#991b1b",
             }}
           >
             {err}
@@ -166,121 +178,26 @@ function SimpleQuestions() {
             background: busy ? "#93c5fd" : "#3b82f6",
             color: "#fff",
             cursor: busy ? "not-allowed" : "pointer",
-            fontWeight: 600
-          }}
-        >
-          {busy ? "Saving…" : index === QUESTIONS.length - 1 ? "See results" : "Next question"}
-        </button>
-      </section>
-    </main>
-  );
-}
-
-      // ✅ After saving → navigate to results
-      const nextQs = new URLSearchParams();
-      nextQs.set("id", assessment_id);
-      nextQs.set("language", language);
-      router.push(`/assessment/result?${nextQs.toString()}`);
-
-    } catch (e) {
-      setErr(e?.message || "Sorry, something went wrong.");
-      setBusy(false);
-    }
-  }
-
-  return (
-    <main style={{ minHeight: "100vh", background: "#fff" }}>
-      <section className="max-w-3xl mx-auto" style={{ padding: 24 }}>
-        <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 8 }}>
-          Quick check‑in
-        </h1>
-        <p style={{ color: "#374151", marginBottom: 12 }}>
-          No wrong answers — this helps us support your next steps.
-        </p>
-
-        {/* Question */}
-        <div
-          style={{
-            border: "1px solid #e5e7eb",
-            borderRadius: 8,
-            padding: 16,
-            marginBottom: 16,
-          }}
-        >
-          <p style={{ marginBottom: 8 }}>
-            How confident do you feel about taking your next small step?
-          </p>
-
-          <div style={{ display: "flex", gap: 12 }}>
-            {[1, 2, 3, 4, 5].map((n) => (
-              <label
-                key={n}
-                style={{ display: "flex", gap: 6, alignItems: "center" }}
-              >
-                <input
-                  type="radio"
-                  name="q1"
-                  value={String(n)}
-                  checked={score === String(n)}
-                  onChange={(e) => setScore(e.target.value)}
-                />
-                <span>{n}</span>
-              </label>
-            ))}
-          </div>
-        </div>
-
-        {err ? (
-          <div
-            role="alert"
-            style={{
-              marginBottom: 12,
-              padding: "10px 12px",
-              borderRadius: 8,
-              border: "1px solid #fecaca",
-              background: "#fef2f2",
-              color: "#991b1b",
-            }}
-          >
-            {err}
-          </div>
-        ) : null}
-
-        {/* Submit Answer */}
-        <button
-          type="button"
-          onClick={busy ? undefined : saveAndContinue}
-          disabled={busy}
-          style={{
-            padding: "10px 14px",
-            borderRadius: 8,
-            border: "1px solid #2563eb",
-            background: busy ? "#93c5fd" : "#3b82f6",
-            color: "#fff",
-            cursor: busy ? "not-allowed" : "pointer",
             fontWeight: 600,
           }}
         >
-          {busy ? "Saving…" : "See my next steps"}
+          {busy
+            ? "Saving…"
+            : index === QUESTIONS.length - 1
+            ? "See results"
+            : "Next question"}
         </button>
-
-        <p style={{ color: "#6b7280", marginTop: 10, fontSize: 12 }}>
-          Assessment ID: {assessment_id} • Language: {language}
-        </p>
       </section>
     </main>
   );
 }
 
+// ------------------------------------------------------------
+// ✅ Page wrapper
+// ------------------------------------------------------------
 export default function QuestionsPage() {
   return (
-    <Suspense
-      fallback={
-        <div style={{ padding: 24 }}>
-          Loading your questions…
-        </div>
-      }
-    >
+    <Suspense fallback={<div style={{ padding: 24 }}>Loading…</div>}>
       <Guard>
         <SimpleQuestions />
       </Guard>
