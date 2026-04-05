@@ -3,7 +3,24 @@ import React, { Suspense, useMemo, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 
 export const dynamic = "force-dynamic";
-
+// ✅ Real question list (temporary until we load from database)
+const QUESTIONS = [
+  {
+    id: "cv-1",
+    category: "cv",
+    text: "I feel confident writing the main parts of my CV."
+  },
+  {
+    id: "interview-1",
+    category: "interview",
+    text: "I feel confident answering common interview questions."
+  },
+  {
+    id: "jobsearch-1",
+    category: "jobsearch",
+    text: "I know where to look for jobs that suit my skills."
+  }
+];
 // --------------------------------------------------------------
 // Guard — keeps the user in the correct assessment flow
 // --------------------------------------------------------------
