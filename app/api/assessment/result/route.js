@@ -274,7 +274,6 @@ async function fetchCategoryMeans(assessmentId) {
     ];
   }
 }
-
     if (error || !Array.isArray(data) || data.length === 0) {
       return [
         { key: 'cv',        avg: 2.8 },
