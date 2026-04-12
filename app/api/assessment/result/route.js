@@ -232,12 +232,48 @@ function localizeRoleSuggestions(rs, lang) {
 }
 
 // ---------------- Supabase lookups with graceful fallbacks ----------------
+// ✅ NEW: Reads the new Rekonet assessment categories
 async function fetchCategoryMeans(assessmentId) {
   try {
     const { data, error } = await supabase
-      .from('assessment_answers')
-      .select('category, value')
+      .from('answers')
+      .select('category, score')
       .eq('assessment_id', assessmentId);
+
+    if (error || !Array.isArray(data) || data.length === 0) {
+      return [
+        { key: 'general',   avg: 2.8 },
+        { key: 'literacy',  avg: 2.8 },
+        { key: 'digital',   avg: 2.8 },
+        { key: 'behaviour', avg: 2.8 },
+      ];
+    }
+
+    const buckets = new Map();
+    for (const row of data) {
+      const key = (row.category || 'general').toLowerCase();
+      if (!buckets.has(key)) buckets.set(key, { sum: 0, count: 0 });
+      const b = buckets.get(key);
+      b.sum += Number(row.score || 0);
+      b.count += 1;
+    }
+
+    const keys = ['general', 'literacy', 'digital', 'behaviour'];
+    return keys.map((k) => {
+      const b = buckets.get(k);
+      const avg = b && b.count ? b.sum / b.count : 0;
+      return { key: k, avg: Number(avg.toFixed(2)) };
+    });
+
+  } catch {
+    return [
+      { key: 'general',   avg: 2.8 },
+      { key: 'literacy',  avg: 2.8 },
+      { key: 'digital',   avg: 2.8 },
+      { key: 'behaviour', avg: 2.8 },
+    ];
+  }
+}
 
     if (error || !Array.isArray(data) || data.length === 0) {
       return [
