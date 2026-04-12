@@ -1,55 +1,68 @@
-export const runtime = 'nodejs';
+export const runtime = "nodejs";
 
-import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '../../_lib/supabase';
+import { NextResponse } from "next/server";
+import { supabase } from "../../../../lib/supabaseClient";
+
+/**
+ * Expected incoming JSON:
+ * {
+ *   "assessment_id": "...",
+ *   "answers": [
+ *      { "question_id": "...", "category": "...", "score": 1 }
+ *   ]
+ * }
+ */
 
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { assessment_id, question_id, category, score } = body || {};
+    const { assessment_id, answers } = body;
 
-    if (!assessment_id || !question_id || !category || score == null) {
+    // ✅ Validate presence of assessment_id
+    if (!assessment_id) {
       return NextResponse.json(
-        { ok: false, error: 'Missing required fields' },
+        { ok: false, error: "Missing assessment_id" },
         { status: 400 }
       );
     }
 
-    const { data: assessment, error: e1 } = await supabaseAdmin
-      .from('assessments')
-      .select('id')
-      .eq('id', assessment_id)
-      .single();
-
-    if (e1 || !assessment) {
+    // ✅ Validate answers shape
+    if (!answers || !Array.isArray(answers) || answers.length === 0) {
       return NextResponse.json(
-        { ok: false, error: 'Unknown assessment_id' },
-        { status: 404 }
+        { ok: false, error: "No answers provided" },
+        { status: 400 }
       );
     }
 
-    const { data, error } = await supabaseAdmin
-      .from('answers')
-      .insert({
-        assessment_id,
-        question_id,
-        category,
-        score: Number(score)
-      })
-      .select('*')
-      .single();
+    // ✅ Insert answers one‑by‑one (safe against DB constraint failures)
+    const formatted = answers.map((a) => ({
+      assessment_id,
+      question_id: a.question_id,
+      category: a.category,  // ✅ must be: general / literacy / digital / behaviour
+      score: a.score,
+    }));
 
-    if (error) {
+    const { error: insertError } = await supabase
+      .from("answers")
+      .insert(formatted);
+
+    if (insertError) {
       return NextResponse.json(
-        { ok: false, error: error.message },
+        { ok: false, error: insertError.message },
         { status: 500 }
       );
     }
 
-    return NextResponse.json({ ok: true, saved: data });
+    // ✅ Mark assessment as completed
+    await supabase
+      .from("assessments")
+      .update({ completed_at: new Date().toISOString() })
+      .eq("id", assessment_id);
+
+    return NextResponse.json({ ok: true, inserted: formatted.length });
   } catch (e) {
     return NextResponse.json(
-      { ok: false, error: String(e?.message || e) },
+      { ok: false, error: e.message },
       { status: 500 }
     );
   }
